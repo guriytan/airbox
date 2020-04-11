@@ -156,6 +156,7 @@ func GetFileService() *FileService {
 			file:    db.GetFileDao(),
 			storage: db.GetStorageDao(),
 			folder:  GetFolderService(),
+			user:    db.GetUserDao(),
 		}
 	}
 	return file

@@ -24,14 +24,6 @@ import (
 //	}
 //}
 
-func CORS(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		c.Response().Header().Set("Access-Control-Allow-Origin", "http://localhost:9528")
-		c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
-		return next(c)
-	}
-}
-
 // Login 拦截请求是否有权限
 func Login(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {

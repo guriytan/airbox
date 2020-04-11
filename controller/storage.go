@@ -67,7 +67,7 @@ func (s *StorageController) UploadFile(c echo.Context) error {
 		filename := part.FileName()
 		if filename != "" {
 			// 调用service方法保存文件数据
-			err = s.file.UploadFile(part, filename, contentLength, s.Auth(c).Storage.ID, fid)
+			err = s.file.UploadFile(part, filename, contentLength, s.Auth(c).ID, fid)
 			if err != nil {
 				data["warning"] = err.Error()
 				c.Logger().Errorf("%s\n", err.Error())

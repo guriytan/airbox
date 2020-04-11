@@ -30,7 +30,6 @@ func (router *Router) Init() *Router {
 
 func (router *Router) PathMapping() *Router {
 	router.Use(middleware.Recover())
-	router.Use(m.CORS)
 	// info panel module
 	panel := controller.GetPanelController()
 	g := router.Group("/panel", m.Login)
