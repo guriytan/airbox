@@ -20,3 +20,4 @@
 主要通过将文件ID以及过期时间进行对称加密作为分享链接，后台通过解析链接获取是否过期以及文件ID进行下载。
 
 ### 数据库设计
+![数据库](https://github.com/guriytan/airbox/blob/master/uml.png)
