@@ -121,6 +121,10 @@ func (u *UserController) SendRegisterCode(c echo.Context) error {
 	data := map[string]interface{}{
 		"code": config.CodeErrorOfRequest,
 	}
+	if !config.Env.Register {
+		data["warning"] = "禁止注册"
+		return c.JSON(http.StatusOK, data)
+	}
 	username, email := c.FormValue("username"), c.FormValue("email")
 	if len(username) < config.UserMinLength || len(username) > config.UserMaxLength {
 		data["warning"] = "用户名应大于6位字符且少于18位字符"
