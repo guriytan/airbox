@@ -8,22 +8,6 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// ProlongToken 用于延长用户Token
-//func ProlongToken(w http.ResponseWriter, claims *Claims) {
-//	if claims.ExpiresAt-time.Now().Unix() < int64(ProlongDuration.Seconds()) {
-//		token, err := GenerateToken(&claims.User)
-//		if err == nil {
-//			http.SetCookie(w, &http.Cookie{
-//				Name:   "session-id",
-//				Value:  token,
-//				MaxAge: 1800,
-//			})
-//		} else {
-//			log.Printf("prolong the expiry date of token error: %s", err.Error())
-//		}
-//	}
-//}
-
 // Login 拦截请求是否有权限
 func Login(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {

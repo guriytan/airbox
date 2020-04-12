@@ -8,7 +8,6 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"io"
 	"log"
-	"net/http"
 	"os"
 )
 
@@ -52,9 +51,6 @@ func (router *Router) PathMapping() *Router {
 	file := router.Group("/file", m.Login)
 	// 上传文件
 	file.POST("/upload", storage.UploadFile)
-	file.OPTIONS("/upload", func(context echo.Context) error {
-		return context.NoContent(http.StatusOK)
-	})
 	// 下载文件
 	file.GET("/download", storage.DownloadFile)
 	// 获取文件的分享链接
