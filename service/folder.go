@@ -68,7 +68,7 @@ func (f *FolderService) deleteFolderDFS(tx *gorm.DB, fid string) error {
 }
 
 // 添加文件夹，若文件夹在当前文件夹下已存在，则在名字后面增加数字
-func (f *FolderService) AddFolder(name string, sid, fid string) error {
+func (f *FolderService) AddFolder(name string, sid, fid string) (*model.Folder, error) {
 	_, err := f.folder.SelectFolderByName(DB, name, sid, fid)
 	i := 1
 	for err == nil {
@@ -82,7 +82,10 @@ func (f *FolderService) AddFolder(name string, sid, fid string) error {
 	if fid != "" {
 		folder.FatherID = &fid
 	}
-	return f.folder.InsertFolder(DB, folder)
+	if err = f.folder.InsertFolder(DB, folder); err != nil {
+		return nil, err
+	}
+	return folder, nil
 }
 
 // 重命名，需要判断当前文件夹下是否存在同样名字的文件夹

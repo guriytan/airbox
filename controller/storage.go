@@ -67,12 +67,13 @@ func (s *StorageController) UploadFile(c echo.Context) error {
 		filename := part.FileName()
 		if filename != "" {
 			// 调用service方法保存文件数据
-			err = s.file.UploadFile(part, filename, contentLength, s.Auth(c).ID, fid)
+			file, err := s.file.UploadFile(part, filename, contentLength, s.Auth(c).ID, fid)
 			if err != nil {
 				data["warning"] = err.Error()
 				c.Logger().Errorf("%s\n", err.Error())
 				return c.JSON(http.StatusOK, data)
 			}
+			data["file"] = file
 		}
 		_ = part.Close()
 	}
@@ -235,12 +236,14 @@ func (s *StorageController) AddFolder(c echo.Context) error {
 		data["warning"] = "缺少名字"
 		return c.JSON(http.StatusOK, data)
 	}
-	if err := s.folder.AddFolder(name, s.Auth(c).Storage.ID, fid); err != nil {
+	folder, err := s.folder.AddFolder(name, s.Auth(c).Storage.ID, fid)
+	if err != nil {
 		data["warning"] = err.Error()
 		c.Logger().Errorf("%s\n", err.Error())
 		return c.JSON(http.StatusOK, data)
 	}
 	data["code"] = config.CodeSuccess
+	data["folder"] = folder
 	return c.JSON(http.StatusOK, data)
 }
 

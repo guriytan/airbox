@@ -7,7 +7,6 @@ import (
 	f "airbox/file"
 	"airbox/model"
 	"airbox/utils"
-	"fmt"
 	"github.com/google/uuid"
 	"mime/multipart"
 	"os"
@@ -23,12 +22,12 @@ type FileService struct {
 }
 
 // 保存文件信息，并更新数据仓库的容量大小
-func (s *FileService) UploadFile(part *multipart.Part, filename string, size uint64, id, fid string) error {
+func (s *FileService) UploadFile(part *multipart.Part, filename string, size uint64, id, fid string) (*model.File, error) {
 	user, err := s.user.SelectUserByID(id)
 	if err != nil {
-		return err
+		return nil, err
 	} else if user.Storage.CurrentSize+size >= user.Storage.MaxSize {
-		return ErrorOutOfSpace
+		return nil, ErrorOutOfSpace
 	}
 	// 计算文件实际存储路径
 	filepath := PrefixMasterDirectory + user.Storage.ID + "/" + uuid.New().String() + "/"
@@ -44,25 +43,20 @@ func (s *FileService) UploadFile(part *multipart.Part, filename string, size uin
 	}
 	// 调用Upload上传并返回文件长度
 	if err := f.Upload(filepath, filename, part, size); err != nil {
-		return err
+		return nil, err
 	}
-	// 计算文件hash
-	hash, err := utils.SHA256Sum(filepath + filename)
+	file, err := s.storeFile(filename, filepath, size, user.Storage.ID, fid)
 	if err != nil {
-		fmt.Println(err)
-	}
-	if err := s.storeFile(hash, filename, filepath, size, user.Storage.ID, fid); err != nil {
 		if err = os.RemoveAll(filepath); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return file, nil
 }
 
-func (s *FileService) storeFile(hash, filename, filepath string, size uint64, sid, fid string) error {
+func (s *FileService) storeFile(filename, filepath string, size uint64, sid, fid string) (*model.File, error) {
 	suffix := strings.ToLower(path.Ext(filename))
 	file := &model.File{
-		Hash:      hash,
 		Name:      filename,
 		Size:      size,
 		Location:  filepath,
@@ -76,13 +70,16 @@ func (s *FileService) storeFile(hash, filename, filepath string, size uint64, si
 	tx := DB.Begin()
 	if err := s.file.InsertFile(tx, file); err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
 	if err := s.storage.UpdateCurrentSize(tx, sid, int64(size)); err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
 	}
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return nil, err
+	}
+	return file, nil
 }
 
 func (s *FileService) GetFileByID(id string) (*model.File, error) {
