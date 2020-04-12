@@ -1,6 +1,9 @@
 # Airbox
 使用Golang+echo搭建的云储存后台API服务，本项目不包括页面部分，使用RESTful风格获取json数据。
 
+想要查看前端页面请去[aribox-vue](https://github.com/guriytan/airbox-vue,"")
+
+
 ### 注意
 你需要创建`config.yml`文件配置启动信息，具体每个字段的含义在`config/env.go`中有comment。
 
