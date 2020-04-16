@@ -15,7 +15,7 @@ type FolderDao interface {
 	UpdateFolder(db *gorm.DB, folder *model.Folder) error
 
 	SelectFolderByID(db *gorm.DB, id string) (*model.Folder, error)
-	SelectFolderByName(db *gorm.DB, name string, sid, fid string) (*model.Folder, error)
+	SelectFolderByName(db *gorm.DB, name, sid, fid string) (*model.Folder, error)
 	SelectFolderByFatherID(db *gorm.DB, fid string) ([]model.Folder, error)
 	SelectFolderByStorageID(db *gorm.DB, sid string) ([]model.Folder, error)
 }

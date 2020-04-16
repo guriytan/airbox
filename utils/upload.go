@@ -1,8 +1,7 @@
-package file
+package utils
 
 import (
 	. "airbox/config"
-	"airbox/utils"
 	"errors"
 	"io"
 	"os"
@@ -31,9 +30,12 @@ func NewChunks(offset, size uint64, buffer []byte) Chunk {
 // die chan is used to control the upload and the listener is used to notify the progress.
 func Upload(filepath, filename string, src io.Reader, contentLength uint64) error {
 	tempFilePath := filepath + filename + FileTempSuffix
+
+	_ = os.MkdirAll(filepath, os.ModePerm)
 	// If the file does not exist, create one. If exists, the download will overwrite it.
 	fd, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_CREATE, FilePermMode)
 	if err != nil {
+		_ = os.RemoveAll(filepath)
 		return err
 	}
 	_ = fd.Close()
@@ -55,13 +57,13 @@ func Upload(filepath, filename string, src io.Reader, contentLength uint64) erro
 	defer CleanTemp(tempFilePath, filepath, count)
 
 	// Waiting for parts upload finished
-	timestamp := utils.Epoch()
+	timestamp := Epoch()
 	var completedBytes uint64
 	for {
 		select {
 		case part := <-results:
 			completedBytes += part.Size
-			timestamp = utils.Epoch()
+			timestamp = Epoch()
 		case err := <-failed:
 			close(stop)
 			return err
@@ -69,7 +71,7 @@ func Upload(filepath, filename string, src io.Reader, contentLength uint64) erro
 		}
 
 		// Handle timeout
-		if utils.Epoch()-timestamp > FileTimeout {
+		if Epoch()-timestamp > FileTimeout {
 			close(stop)
 			return errors.New("timeout for transmission")
 		}
@@ -82,6 +84,7 @@ func Upload(filepath, filename string, src io.Reader, contentLength uint64) erro
 	return os.Rename(tempFilePath, filepath+filename)
 }
 
+// CleanTemp clean the temp file after something causing the upload progress is stop
 func CleanTemp(tempFilePath, filepath string, count chan bool) {
 	for i := 0; i < FileGoroutine; i++ {
 		<-count
@@ -96,6 +99,7 @@ func CleanTemp(tempFilePath, filepath string, count chan bool) {
 	}
 }
 
+// UploadWorker read the data from the chan and write to the file parallel
 func UploadWorker(filePathTemp string, jobs <-chan Chunk, results chan<- Chunk, failed chan<- error,
 	stop <-chan bool, count chan<- bool) {
 	defer func() {
@@ -134,6 +138,7 @@ func UploadWorker(filePathTemp string, jobs <-chan Chunk, results chan<- Chunk, 
 	}
 }
 
+// UploadWorker produce the data remaining the worker writes to the file
 func UploadScheduler(src io.Reader, jobs chan Chunk, failed chan error) {
 	buffer := make([]byte, FileDownloadPartSize)
 	offset := uint64(0)

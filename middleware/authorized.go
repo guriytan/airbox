@@ -11,31 +11,23 @@ import (
 // Login 拦截请求是否有权限
 func Login(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if c.Request().Method == "OPTIONS" {
-			return next(c)
+		token := c.Request().Header.Get("Authorization")
+		if token == "" {
+			cookie, err := c.Cookie("air_box_token")
+			if err != nil {
+				return c.JSON(http.StatusForbidden, config.ErrorWithoutToken)
+			}
+			token = cookie.Value
 		}
-		token, err := c.Cookie("air_box_token")
+		claims, exp, err := utils.ParseUserToken(token)
 		if err != nil {
-			return c.JSON(http.StatusOK, map[string]interface{}{
-				"code":    config.CodeErrorOfAuthority,
-				"warning": err.Error(),
-			})
-		}
-		claims, exp, err := utils.ParseUserToken(token.Value)
-		if err != nil {
-			c.Logger().Warnf("failed to parse token: a", err)
-			return c.JSON(http.StatusOK, map[string]interface{}{
-				"code":    config.CodeErrorOfAuthority,
-				"warning": err.Error(),
-			})
+			c.Logger().Warnf("failed to parse token: %s\n", err.Error())
+			return c.JSON(http.StatusForbidden, err.Error())
 		}
 		if exp < utils.Epoch() {
-			return c.JSON(http.StatusOK, map[string]interface{}{
-				"code":    config.CodeErrorOfAuthority,
-				"warning": config.ErrorOutOfDated,
-			})
+			return c.JSON(http.StatusUnauthorized, config.ErrorOutOfDated)
 		}
-		c.Set("authority", claims)
+		c.Set("Authorization", claims)
 		return next(c)
 	}
 }
@@ -46,16 +38,10 @@ func CheckLink(next echo.HandlerFunc) echo.HandlerFunc {
 		token := c.QueryParam("token")
 		id, exp, err := utils.ParseEmailToken(token)
 		if err != nil {
-			c.Logger().Warnf("failed to parse token: a", err)
-			return c.JSON(http.StatusOK, map[string]interface{}{
-				"code":    config.CodeErrorOfServer,
-				"warning": err.Error(),
-			})
+			c.Logger().Warnf("failed to parse token: %s\n", err.Error())
+			return c.JSON(http.StatusForbidden, err.Error())
 		} else if exp < utils.Epoch() {
-			return c.JSON(http.StatusOK, map[string]interface{}{
-				"code":    config.CodeErrorOfAuthority,
-				"warning": config.ErrorOutOfDated,
-			})
+			return c.JSON(http.StatusUnauthorized, config.ErrorOutOfDated)
 		}
 		c.Set("id", id)
 		return next(c)

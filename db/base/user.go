@@ -14,7 +14,7 @@ type UserDao interface {
 	UpdateUser(user *model.User) error
 
 	SelectUserByID(id string) (*model.User, error)
-	SelectUserByPwdAndNameOrEmail(name, email, pwd string) (*model.User, error)
+	SelectUserByPwdAndNameOrEmail(name, pwd string) (*model.User, error)
 	SelectUserByName(username string) (*model.User, error)
 	SelectUserByEmail(email string) (*model.User, error)
 }

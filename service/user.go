@@ -33,22 +33,27 @@ func GetUserService() *UserService {
 	return user
 }
 
-func (u *UserService) Login(username, email, password string) (*model.User, error) {
-	return u.user.SelectUserByPwdAndNameOrEmail(username, email, utils.EncryptPassword(password))
+// Login 验证用户名或邮箱以及密码是否正确
+func (u *UserService) Login(user, password string) (*model.User, error) {
+	return u.user.SelectUserByPwdAndNameOrEmail(user, utils.EncryptPassword(password))
 }
 
+// GetUserByID 由于从token解析得到的user信息并不是实时的，因此这里提供实时的获取用户信息供显示容量
 func (u *UserService) GetUserByID(id string) (*model.User, error) {
 	return u.user.SelectUserByID(id)
 }
 
+// GetUserByUsername 检验用户名是否重复
 func (u *UserService) GetUserByUsername(username string) (*model.User, error) {
 	return u.user.SelectUserByName(username)
 }
 
+// GetUserByEmail 检验邮箱是否重复
 func (u *UserService) GetUserByEmail(email string) (*model.User, error) {
 	return u.user.SelectUserByEmail(email)
 }
 
+// Registry 注册用户
 func (u *UserService) Registry(username string, password string, email string) error {
 	tx := DB.Begin()
 	user := &model.User{
@@ -72,6 +77,7 @@ func (u *UserService) Registry(username string, password string, email string) e
 	return nil
 }
 
+// 修改Pwd 重置密码
 func (u *UserService) ResetPwd(id, password string) error {
 	return u.user.UpdateUser(&model.User{
 		Model: model.Model{
@@ -81,6 +87,7 @@ func (u *UserService) ResetPwd(id, password string) error {
 	})
 }
 
+// ResetEmail 修改邮箱
 func (u *UserService) ResetEmail(id, email string) error {
 	if err := u.user.UpdateUser(&model.User{
 		Model: model.Model{
@@ -94,35 +101,8 @@ func (u *UserService) ResetEmail(id, email string) error {
 	return nil
 }
 
-// 从缓存中读取key为email的值与code判断是否一致
-// 当相等时返回true，不相等返回false
-func (u *UserService) VerifyEmailCaptcha(email string, code string) bool {
-	if captcha := u.redis.GetCaptcha(email); captcha == code {
-		return true
-	}
-	return false
-}
-
-// 生成随机验证码发送至邮箱
-func (u *UserService) SendCaptcha(email string) error {
-	captcha := utils.GetEmailCaptcha()
-	if err := u.redis.SetCaptcha(email, captcha); err != nil {
-		return err
-	}
-	return utils.SendCaptcha(email, captcha)
-}
-
-// 根据邮箱生成链接发送至邮箱
-func (u *UserService) SendResetLink(id, email string) error {
-	captcha, err := utils.GenerateEmailToken(id)
-	if err != nil {
-		return err
-	}
-	return utils.SendResetLink(email, Env.Web.Site+"/#/reset/"+captcha)
-}
-
-// CloseUser 注销用户，删除数据仓库内所有文件以及文件夹
-func (u *UserService) CloseUser(id, sid string) error {
+// UnsubscribeUser 注销用户，删除数据仓库内所有文件以及文件夹
+func (u *UserService) UnsubscribeUser(id, sid string) error {
 	tx := DB.Begin()
 	if err := u.user.DeleteUserByID(id); err != nil {
 		tx.Rollback()
@@ -143,5 +123,5 @@ func (u *UserService) CloseUser(id, sid string) error {
 	if err := tx.Commit().Error; err != nil {
 		return err
 	}
-	return os.RemoveAll(PrefixMasterDirectory + sid + "/")
+	return os.RemoveAll(FilePrefixMasterDirectory + sid + "/")
 }

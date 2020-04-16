@@ -15,9 +15,9 @@ type FileDao interface {
 	UpdateFile(db *gorm.DB, file *model.File) error
 
 	SelectFileByID(db *gorm.DB, id string) (*model.File, error)
-	SelectFileByName(db *gorm.DB, name, sid string, fid *string) (*model.File, error)
+	SelectFileByName(db *gorm.DB, name, sid, fid string) (*model.File, error)
 	SelectFileByFolderID(db *gorm.DB, fid string) ([]model.File, error)
 	SelectFileByStorageID(db *gorm.DB, sid string) ([]model.File, error)
 	SelectFileByType(db *gorm.DB, t string) ([]model.File, error)
-	SelectFileTypeCount(db *gorm.DB) (types []model.Statistics, err error)
+	SelectFileTypeCount(db *gorm.DB, sid string) (types []model.Statistics, err error)
 }

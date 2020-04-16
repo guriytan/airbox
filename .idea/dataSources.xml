@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="cloud@39.101.207.49" uuid="ef189448-4e91-4741-b6e3-079c43bed9c6">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://39.101.207.49:3306/cloud</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="cloud@rm-8vbkx26bl2wbsg2b2fo.mysql.zhangbei.rds.aliyuncs.com" uuid="c1b03c62-0a9d-4232-9146-c59dffd546d5">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://rm-8vbkx26bl2wbsg2b2fo.mysql.zhangbei.rds.aliyuncs.com:3306/cloud</jdbc-url>
+    </data-source>
+  </component>
+</project>

@@ -49,6 +49,7 @@ type Environment struct {
 	Register bool `yaml:"register"` // 注册权限
 }
 
+// 加载配置文件
 func loadConfig(path string) *Environment {
 	env := &Environment{}
 	buffer, err := ioutil.ReadFile(path)
@@ -63,7 +64,7 @@ func loadConfig(path string) *Environment {
 }
 
 func Init() {
-	initializeRedis()
+	//initializeRedis()
 	initializeDB()
 	initializeMail()
 }
