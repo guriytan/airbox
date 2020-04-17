@@ -7,7 +7,7 @@
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
       <jdbc-url>jdbc:mysql://39.101.207.49:3306/cloud</jdbc-url>
     </data-source>
-    <data-source source="LOCAL" name="cloud@rm-8vbkx26bl2wbsg2b2fo.mysql.zhangbei.rds.aliyuncs.com" uuid="c1b03c62-0a9d-4232-9146-c59dffd546d5">
+    <data-source source="LOCAL" name="cloud@rm-8vbkx26bl2wbsg2b2fo.mysql.zhangbei.rds.aliyuncs.com" uuid="59680682-70bf-4f21-a4d6-5db205855540">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>

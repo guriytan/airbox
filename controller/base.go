@@ -57,7 +57,7 @@ func (*BaseController) Update(c echo.Context, rename, copy, move func(param, id 
 		}
 	} else {
 		if fid == id {
-			return c.JSON(http.StatusBadRequest, "不能复制或移动到自身文件夹")
+			return c.JSON(http.StatusBadRequest, "不能复制或移动到自身")
 		}
 		if copy2 == "true" {
 			// 复制

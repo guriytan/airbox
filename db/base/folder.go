@@ -12,7 +12,7 @@ type FolderDao interface {
 	DeleteFolderByID(db *gorm.DB, id string) error
 	DeleteFolderBySID(db *gorm.DB, sid string) error
 
-	UpdateFolder(db *gorm.DB, folder *model.Folder) error
+	UpdateFolder(db *gorm.DB, id string, folder map[string]interface{}) error
 
 	SelectFolderByID(db *gorm.DB, id string) (*model.Folder, error)
 	SelectFolderByName(db *gorm.DB, name, sid, fid string) (*model.Folder, error)

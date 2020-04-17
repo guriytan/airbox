@@ -12,7 +12,7 @@ type FileDao interface {
 	DeleteFileByID(db *gorm.DB, id string) error
 	DeleteFileBySID(db *gorm.DB, sid string) error
 
-	UpdateFile(db *gorm.DB, file *model.File) error
+	UpdateFile(db *gorm.DB, id string, file map[string]interface{}) error
 
 	SelectFileByID(db *gorm.DB, id string) (*model.File, error)
 	SelectFileByName(db *gorm.DB, name, sid, fid string) (*model.File, error)

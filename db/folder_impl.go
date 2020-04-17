@@ -45,8 +45,8 @@ func (f *FolderDaoImpl) DeleteFolderBySID(db *gorm.DB, sid string) error {
 }
 
 // UpdateFolder 更新文件夹信息
-func (f *FolderDaoImpl) UpdateFolder(db *gorm.DB, folder *model.Folder) error {
-	return db.Model(folder).Updates(folder).Error
+func (f *FolderDaoImpl) UpdateFolder(db *gorm.DB, id string, folder map[string]interface{}) error {
+	return db.Table("folder").Where("id = ?", id).Updates(folder).Error
 }
 
 // SelectFolderByID 根据文件夹ID获得文件夹

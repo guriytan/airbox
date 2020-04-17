@@ -132,10 +132,7 @@ func (f *FolderService) RenameFolder(name, id string) error {
 	if _, err := f.folder.SelectFolderByName(DB, name, folder.StorageID, fid); err == nil {
 		return errors.New(ErrorOfConflict)
 	}
-	return f.folder.UpdateFolder(DB, &model.Folder{
-		Model: model.Model{ID: id},
-		Name:  name,
-	})
+	return f.folder.UpdateFolder(DB, id, map[string]interface{}{"name": name})
 }
 
 // CopyFolder 复制文件夹，需要判断当前文件夹下是否存在同样名字的文件夹
@@ -163,26 +160,29 @@ func (f *FolderService) copyFolderDFS(tx *gorm.DB, folder *model.Folder, fid str
 	if fid != "" {
 		folder.FatherID = &fid
 	}
+	// 复制文件夹，获取新ID
 	if err := f.folder.InsertFolder(tx, folder); err != nil {
 		return err
 	}
-	fileByFolderID, _ := f.file.SelectFileByFolderID(tx, id)
+	fileByFolderID, _ := f.file.SelectFileByFolderID(tx, id) // 以folder的原ID作为父文件id的文件列表
 	for _, file := range fileByFolderID {
-		filepath := FilePrefixMasterDirectory + file.StorageID + "/" + uuid.New().String() + "/"
+		previous := file.Location // 原有文件路径
 		file.Model = model.Model{}
-		file.Location = filepath
-		file.FolderID = &folder.ID
+		file.Location = FilePrefixMasterDirectory + file.StorageID + "/" + uuid.New().String() + "/"
+		_ = os.MkdirAll(file.Location, os.ModePerm)
+		file.FolderID = &folder.ID // 复制文件的Fid为新文件夹的新ID
 		if err := f.file.InsertFile(tx, &file); err != nil {
 			return err
 		}
 		if err := f.storage.UpdateCurrentSize(tx, file.StorageID, int64(file.Size)); err != nil {
 			return err
 		}
-		_, _ = utils.CopyFile(filepath+file.Name, file.Location+file.Name)
+		_, _ = utils.CopyFile(file.Location+file.Name, previous+file.Name)
 	}
-	folderByFatherID, _ := f.folder.SelectFolderByFatherID(tx, id)
-	for _, folder := range folderByFatherID {
-		if err := f.copyFolderDFS(tx, &folder, folder.ID); err != nil {
+	folderByFatherID, _ := f.folder.SelectFolderByFatherID(tx, id) // 以folder的原ID作为父文件id的文件夹列表
+	for _, ff := range folderByFatherID {
+		// 将新文件夹的新ID作为fid，对每一个文件迭代复制
+		if err := f.copyFolderDFS(tx, &ff, folder.ID); err != nil {
 			return err
 		}
 	}
@@ -198,10 +198,11 @@ func (f *FolderService) MoveFolder(fid, id string) error {
 	if _, err = f.folder.SelectFolderByName(DB, folder.Name, folder.StorageID, fid); err == nil {
 		return errors.New(ErrorOfConflict)
 	}
-	folder.Model = model.Model{ID: folder.ID}
-	folder.FatherID = nil
+	save := make(map[string]interface{})
 	if fid != "" {
-		folder.FatherID = &fid
+		save["father_id"] = fid
+	} else {
+		save["father_id"] = nil
 	}
-	return f.folder.UpdateFolder(DB, folder)
+	return f.folder.UpdateFolder(DB, id, save)
 }

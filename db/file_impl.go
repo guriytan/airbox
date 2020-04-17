@@ -52,8 +52,8 @@ func (f *FileDaoImpl) InsertFile(db *gorm.DB, file *model.File) error {
 }
 
 // UpdateFile 更新文件信息
-func (f *FileDaoImpl) UpdateFile(db *gorm.DB, file *model.File) error {
-	return db.Model(file).Updates(file).Error
+func (f *FileDaoImpl) UpdateFile(db *gorm.DB, id string, file map[string]interface{}) error {
+	return db.Table("file").Where("id = ?", id).Updates(file).Error
 }
 
 // SelectFileByID 根据文件ID获得文件

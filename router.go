@@ -29,6 +29,7 @@ func (router *Router) Init() *Router {
 
 func (router *Router) PathMapping() *Router {
 	router.Use(middleware.Recover())
+	router.Use(middleware.CORS())
 
 	// info组，负责一些显示的数据以及文件分享api
 	info := router.Group("/info", middleware2.Login)

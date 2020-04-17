@@ -167,10 +167,7 @@ func (f *FileService) RenameFile(name, id string) error {
 	if _, err = f.file.SelectFileByName(DB, name, file.StorageID, fid); err == nil {
 		return errors.New(ErrorOfConflict)
 	}
-	if err := f.file.UpdateFile(DB, &model.File{
-		Model: model.Model{ID: id},
-		Name:  name,
-	}); err != nil {
+	if err := f.file.UpdateFile(DB, id, map[string]interface{}{"name": name}); err != nil {
 		return err
 	}
 	return os.Rename(file.Location+file.Name, file.Location+name)
@@ -185,12 +182,13 @@ func (f *FileService) MoveFile(fid, id string) error {
 	if _, err = f.file.SelectFileByName(DB, file.Name, file.StorageID, fid); err == nil {
 		return errors.New(ErrorOfConflict)
 	}
-	file.Model = model.Model{ID: file.ID}
-	file.FolderID = nil
+	save := make(map[string]interface{})
 	if fid != "" {
-		file.FolderID = &fid
+		save["folder_id"] = fid
+	} else {
+		save["folder_id"] = nil
 	}
-	return f.file.UpdateFile(DB, file)
+	return f.file.UpdateFile(DB, id, save)
 }
 
 // CopyFile 复制文件，需要判断当前文件夹下是否存在同样名字的文件
