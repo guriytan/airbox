@@ -25,7 +25,7 @@ func (f *FolderDaoImpl) SelectFolderByName(db *gorm.DB, name, sid, fid string) (
 
 // SelectFolderByStorageID 获取在数据仓库Sid下，父文件夹为Fid的文件夹
 func (f *FolderDaoImpl) SelectFolderByStorageID(db *gorm.DB, sid string) (folders []model.Folder, err error) {
-	err = db.Where("storage_id = ? and father_id is null", sid).Find(&folders).Error
+	err = db.Where("storage_id = ? and father_id is null", sid).Order("created_at desc").Find(&folders).Error
 	return
 }
 
@@ -58,7 +58,7 @@ func (f *FolderDaoImpl) SelectFolderByID(db *gorm.DB, id string) (*model.Folder,
 
 // SelectFolderByFatherID 根据父文件夹ID获得文件夹
 func (f *FolderDaoImpl) SelectFolderByFatherID(db *gorm.DB, id string) (folders []model.Folder, err error) {
-	err = db.Where("father_id = ?", id).Find(&folders).Error
+	err = db.Where("father_id = ?", id).Order("created_at desc").Find(&folders).Error
 	return
 }
 

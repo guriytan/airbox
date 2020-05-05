@@ -42,7 +42,7 @@ func (f *FileDaoImpl) SelectFileByName(db *gorm.DB, name, sid, fid string) (*mod
 
 // SelectFileByStorageID 获取在数据仓库Sid下，父文件夹为Fid的文件
 func (f *FileDaoImpl) SelectFileByStorageID(db *gorm.DB, sid string) (files []model.File, err error) {
-	err = db.Where("storage_id = ? and folder_id is null", sid).Find(&files).Error
+	err = db.Where("storage_id = ? and folder_id is null", sid).Order("created_at desc").Find(&files).Error
 	return
 }
 
@@ -65,13 +65,13 @@ func (f *FileDaoImpl) SelectFileByID(db *gorm.DB, id string) (*model.File, error
 
 // SelectFileByFolderID 根据文件夹ID获得文件
 func (f *FileDaoImpl) SelectFileByFolderID(db *gorm.DB, id string) (files []model.File, err error) {
-	err = db.Where("folder_id = ?", id).Find(&files).Error
+	err = db.Where("folder_id = ?", id).Order("created_at desc").Find(&files).Error
 	return
 }
 
 // SelectFileByType 根据文件类型获得文件
 func (f *FileDaoImpl) SelectFileByType(db *gorm.DB, t string) (files []model.File, err error) {
-	err = db.Where("type = ?", t).Find(&files).Error
+	err = db.Where("type = ?", t).Order("created_at desc").Find(&files).Error
 	return
 }
 
