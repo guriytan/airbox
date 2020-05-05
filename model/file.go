@@ -34,7 +34,3 @@ type File struct {
 func (f *File) BeforeCreate(scope *gorm.Scope) error {
 	return scope.SetColumn("ID", uuid.New().String())
 }
-
-func (File) TableName() string {
-	return "file"
-}

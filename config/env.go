@@ -64,7 +64,7 @@ func loadConfig(path string) *Environment {
 }
 
 func Init() {
-	//initializeRedis()
+	initializeRedis()
 	initializeDB()
 	initializeMail()
 }

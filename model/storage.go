@@ -16,7 +16,3 @@ type Storage struct {
 func (s *Storage) BeforeCreate(scope *gorm.Scope) error {
 	return scope.SetColumn("ID", uuid.New().String())
 }
-
-func (Storage) TableName() string {
-	return "storage"
-}

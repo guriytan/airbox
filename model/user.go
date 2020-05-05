@@ -18,7 +18,3 @@ type User struct {
 func (user *User) BeforeCreate(scope *gorm.Scope) error {
 	return scope.SetColumn("ID", uuid.New().String())
 }
-
-func (User) TableName() string {
-	return "user"
-}

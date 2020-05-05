@@ -15,7 +15,3 @@ type Folder struct {
 func (f *Folder) BeforeCreate(scope *gorm.Scope) error {
 	return scope.SetColumn("ID", uuid.New().String())
 }
-
-func (Folder) TableName() string {
-	return "folder"
-}

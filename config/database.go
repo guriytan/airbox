@@ -28,6 +28,7 @@ func initializeDB() {
 		fmt.Println("failed to ping DB: ", err)
 		os.Exit(0)
 	}
+	DB.SingularTable(true)
 	DB.DB().SetMaxIdleConns(5)
 	DB.DB().SetMaxOpenConns(20)
 	DB.DB().SetConnMaxLifetime(30 * time.Second)

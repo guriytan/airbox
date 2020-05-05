@@ -60,11 +60,6 @@ func (f *FolderService) GetFolderByFatherID(fid string) ([]model.Folder, error) 
 	return f.folder.SelectFolderByFatherID(DB, fid)
 }
 
-// UploadFolder 上传文件夹，需要对文件所在路径新建文件夹，然后再调用上传
-func (f *FolderService) UploadFolder(name string, sid, fid string) error {
-	return nil
-}
-
 // AddFolder 添加文件夹，若文件夹在当前文件夹下已存在，则在名字后面增加数字
 func (f *FolderService) AddFolder(name string, sid, fid string) (*model.Folder, error) {
 	_, err := f.folder.SelectFolderByName(DB, name, sid, fid)

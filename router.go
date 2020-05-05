@@ -6,8 +6,6 @@ import (
 	middleware2 "airbox/middleware"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"io"
-	"log"
 	"os"
 )
 
@@ -17,11 +15,7 @@ type Router struct {
 
 func (router *Router) Init() *Router {
 	// 注册日志
-	errFile, err := os.OpenFile("./errors.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalln("打开日志文件失败：", err)
-	}
-	router.Logger.SetOutput(io.MultiWriter(os.Stderr, errFile))
+	router.Logger.SetOutput(os.Stderr)
 	router.Logger.SetPrefix("[airbox]")
 	DB.SetLogger(router.Logger)
 	return router
@@ -29,7 +23,6 @@ func (router *Router) Init() *Router {
 
 func (router *Router) PathMapping() *Router {
 	router.Use(middleware.Recover())
-	router.Use(middleware.CORS())
 
 	// info组，负责一些显示的数据以及文件分享api
 	info := router.Group("/info", middleware2.Login)
