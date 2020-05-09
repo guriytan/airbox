@@ -103,14 +103,14 @@ func (info *InfoController) ListType(c echo.Context) error {
 func (info *InfoController) ShareFile(c echo.Context) error {
 	token := c.FormValue("link")
 	if token == "" {
-		return c.JSON(http.StatusUnauthorized, config.ErrorWithoutToken)
+		return c.JSON(http.StatusForbidden, config.ErrorWithoutToken)
 	}
 	fileID, exp, err := utils.ParseShareToken(token)
 	if err != nil {
 		c.Logger().Warnf("failed to parse token: a", err)
 		return c.JSON(http.StatusForbidden, "token错误")
 	} else if exp < utils.Epoch() {
-		return c.JSON(http.StatusForbidden, config.ErrorOutOfDated)
+		return c.JSON(http.StatusUnauthorized, config.ErrorOutOfDated)
 	}
 	fileByID, err := info.file.GetFileByID(fileID)
 	if err != nil {

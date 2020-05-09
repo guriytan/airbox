@@ -81,7 +81,7 @@ func (f *FileService) UploadFile(part *multipart.Part, size uint64, id, fid stri
 		}
 	}
 	// 计算文件实际存储路径
-	filepath = FilePrefixMasterDirectory + user.Storage.ID + "/" + uuid.New().String() + "/"
+	filepath = Env.Upload.Dir + user.Storage.ID + "/" + uuid.New().String() + "/"
 	// 判断是否已存在同名文件并修改文件名（增加数字编号）
 	i := 1
 	for {
@@ -200,7 +200,7 @@ func (f *FileService) CopyFile(fid, id string) error {
 	if _, err = f.file.SelectFileByName(DB, file.Name, file.StorageID, fid); err == nil {
 		return errors.New(ErrorOfConflict)
 	}
-	filepath := FilePrefixMasterDirectory + file.StorageID + "/" + uuid.New().String() + "/"
+	filepath := Env.Upload.Dir + file.StorageID + "/" + uuid.New().String() + "/"
 	_ = os.MkdirAll(filepath, os.ModePerm)
 	if _, err := f.storeFile(file.Name, filepath, file.Size, file.StorageID, fid); err != nil {
 		return err

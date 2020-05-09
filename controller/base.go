@@ -18,14 +18,13 @@ func getBaseController() BaseController {
 	return BaseController{}
 }
 
-// auth return the authority of request
+// verify return the authority of request
 func (*BaseController) auth(c echo.Context) *model.User {
 	return c.Get("Authorization").(*model.User)
 }
 
 // downloadFile 公共使用的下载文件模块
 func (*BaseController) downloadFile(c echo.Context, file *model.File) error {
-
 	open, err := os.Open(file.Location + file.Name)
 	if err != nil {
 		c.Logger().Errorf("%s\n", err.Error())

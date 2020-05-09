@@ -163,7 +163,7 @@ func (f *FolderService) copyFolderDFS(tx *gorm.DB, folder *model.Folder, fid str
 	for _, file := range fileByFolderID {
 		previous := file.Location // 原有文件路径
 		file.Model = model.Model{}
-		file.Location = FilePrefixMasterDirectory + file.StorageID + "/" + uuid.New().String() + "/"
+		file.Location = Env.Upload.Dir + file.StorageID + "/" + uuid.New().String() + "/"
 		_ = os.MkdirAll(file.Location, os.ModePerm)
 		file.FolderID = &folder.ID // 复制文件的Fid为新文件夹的新ID
 		if err := f.file.InsertFile(tx, &file); err != nil {

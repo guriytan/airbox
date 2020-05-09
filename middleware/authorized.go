@@ -2,11 +2,14 @@ package middleware
 
 import (
 	"airbox/config"
+	"airbox/service"
 	"airbox/utils"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
+
+var verify = service.GetAuthService()
 
 // Login 拦截请求是否有权限
 func Login(next echo.HandlerFunc) echo.HandlerFunc {
@@ -24,6 +27,12 @@ func Login(next echo.HandlerFunc) echo.HandlerFunc {
 			c.Logger().Warnf("failed to parse token: %s\n", err.Error())
 			return c.JSON(http.StatusForbidden, err.Error())
 		}
+		// 解析token获得claims对象后，取claims的username作为key从redis中获取token，若token不一致则认为该用户在其他设备登录
+		// 因此需要重新登录
+		if !verify.VerifyToken(claims.Name, token) {
+			return c.JSON(http.StatusUnauthorized, config.ErrorSSO)
+		}
+		// token过期
 		if exp < utils.Epoch() {
 			return c.JSON(http.StatusUnauthorized, config.ErrorOutOfDated)
 		}

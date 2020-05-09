@@ -16,6 +16,12 @@ type Chunk struct {
 
 type Chunks []Chunk
 
+var (
+	partSize  = Env.Upload.PartSize * 1024
+	goroutine = Env.Upload.Goroutine
+	timeout   = int64(Env.Upload.Timeout)
+)
+
 func NewChunks(offset, size uint64, buffer []byte) Chunk {
 	chunk := Chunk{
 		Offset: offset,
@@ -40,14 +46,14 @@ func Upload(filepath, filename string, src io.Reader, contentLength uint64) erro
 	}
 	_ = fd.Close()
 
-	jobs := make(chan Chunk, 2*FileGoroutine)
-	results := make(chan Chunk, 2*FileGoroutine)
+	jobs := make(chan Chunk, 2*goroutine)
+	results := make(chan Chunk, 2*goroutine)
 	failed := make(chan error)
 	count := make(chan bool)
 	stop := make(chan bool)
 
 	// Start the upload workers
-	for w := 1; w <= FileGoroutine; w++ {
+	for w := 1; w <= goroutine; w++ {
 		go UploadWorker(tempFilePath, jobs, results, failed, stop, count)
 	}
 
@@ -71,7 +77,7 @@ func Upload(filepath, filename string, src io.Reader, contentLength uint64) erro
 		}
 
 		// Handle timeout
-		if Epoch()-timestamp > FileTimeout {
+		if Epoch()-timestamp > timeout {
 			close(stop)
 			return errors.New("timeout for transmission")
 		}
@@ -86,7 +92,7 @@ func Upload(filepath, filename string, src io.Reader, contentLength uint64) erro
 
 // CleanTemp clean the temp file after something causing the upload progress is stop
 func CleanTemp(tempFilePath, filepath string, count chan bool) {
-	for i := 0; i < FileGoroutine; i++ {
+	for i := 0; i < goroutine; i++ {
 		<-count
 	}
 	// if something wrong, the temp file bill be removed.
@@ -140,7 +146,7 @@ func UploadWorker(filePathTemp string, jobs <-chan Chunk, results chan<- Chunk, 
 
 // UploadWorker produce the data remaining the worker writes to the file
 func UploadScheduler(src io.Reader, jobs chan Chunk, failed chan error) {
-	buffer := make([]byte, FileDownloadPartSize)
+	buffer := make([]byte, partSize)
 	offset := uint64(0)
 	defer close(jobs)
 	for {

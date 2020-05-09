@@ -13,8 +13,8 @@ import (
 // UserController is responsible for the request of user operation
 type UserController struct {
 	BaseController
-	user    *service.UserService
-	captcha *service.CaptchaService
+	user   *service.UserService
+	verify *service.AuthService
 }
 
 var user *UserController
@@ -25,7 +25,7 @@ func GetUserController() *UserController {
 		user = &UserController{
 			BaseController: getBaseController(),
 			user:           service.GetUserService(),
-			captcha:        service.GetCaptchaService(),
+			verify:         service.GetAuthService(),
 		}
 	}
 	return user
@@ -39,7 +39,7 @@ func (u *UserController) Register(c echo.Context) error {
 	}
 	email, code := c.FormValue("email"), c.FormValue("code")
 	// 从缓存中使用邮箱作为key获取邮箱验证码与表单的邮箱验证码比对
-	if !u.captcha.VerifyEmailCaptcha(email, code) {
+	if !u.verify.VerifyEmailCaptcha(email, code) {
 		return c.JSON(http.StatusBadRequest, "验证码错误")
 	}
 	password, username := c.FormValue("password"), c.FormValue("username")
@@ -59,6 +59,7 @@ func (u *UserController) Register(c echo.Context) error {
 		c.Logger().Errorf("%s\n", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+	u.verify.DeleteCaptcha(email)
 	return c.NoContent(http.StatusOK)
 }
 
@@ -105,7 +106,7 @@ func (u *UserController) ResetPwdByOrigin(c echo.Context) error {
 func (u *UserController) ResetEmail(c echo.Context) error {
 	user, email, code := u.auth(c), c.FormValue("email"), c.FormValue("code")
 	// 将email作为key从缓存中提取验证码比对
-	if !u.captcha.VerifyEmailCaptcha(email, code) {
+	if !u.verify.VerifyEmailCaptcha(email, code) {
 		return c.JSON(http.StatusBadRequest, "验证码错误")
 	}
 	if !utils.CheckEmailFormat(email) {
@@ -117,11 +118,15 @@ func (u *UserController) ResetEmail(c echo.Context) error {
 		c.Logger().Errorf("%s\n", err.Error())
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	} else {
+		u.verify.DeleteCaptcha(email)
 		user.Email = email
 		token, e := utils.GenerateUserToken(user)
 		if e != nil {
 			c.Logger().Errorf("%s\n", e.Error())
 			return c.JSON(http.StatusInternalServerError, e.Error())
+		}
+		if err = u.verify.SetToken(user.Name, token); err != nil {
+			c.Logger().Errorf("%s\n", err.Error())
 		}
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"token": token,
@@ -133,7 +138,7 @@ func (u *UserController) ResetEmail(c echo.Context) error {
 func (u *UserController) Unsubscribe(c echo.Context) error {
 	user := u.auth(c)
 	// 将email作为key从缓存中提取验证码比对
-	if code := c.QueryParam("code"); !u.captcha.VerifyEmailCaptcha(user.Email, code) {
+	if code := c.QueryParam("code"); !u.verify.VerifyEmailCaptcha(user.Email, code) {
 		return c.JSON(http.StatusBadRequest, config.ErrorOfCaptcha)
 	}
 	// 从数据库中删除相关信息并从磁盘删除文件

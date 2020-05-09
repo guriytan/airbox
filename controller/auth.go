@@ -11,9 +11,9 @@ import (
 
 type AuthController struct {
 	BaseController
-	file    *service.FileService
-	user    *service.UserService
-	captcha *service.CaptchaService
+	file   *service.FileService
+	user   *service.UserService
+	verify *service.AuthService
 }
 
 var auth *AuthController
@@ -24,7 +24,7 @@ func GetAuthController() *AuthController {
 			BaseController: getBaseController(),
 			file:           service.GetFileService(),
 			user:           service.GetUserService(),
-			captcha:        service.GetCaptchaService(),
+			verify:         service.GetAuthService(),
 		}
 	}
 	return auth
@@ -52,6 +52,9 @@ func (auth *AuthController) LoginToken(c echo.Context) error {
 			c.Logger().Errorf("%s\n", e.Error())
 			return c.JSON(http.StatusInternalServerError, e.Error())
 		}
+		if err = auth.verify.SetToken(user.Name, token); err != nil {
+			c.Logger().Errorf("%s\n", err.Error())
+		}
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"token": token,
 		})
@@ -62,7 +65,7 @@ func (auth *AuthController) LoginToken(c echo.Context) error {
 func (auth *AuthController) UnsubscribeCode(c echo.Context) error {
 	// 发送验证码至邮箱
 	go func() {
-		if err := auth.captcha.SendCaptcha(auth.auth(c).Email); err != nil {
+		if err := auth.verify.SendCaptcha(auth.auth(c).Email); err != nil {
 			c.Logger().Errorf("%s\n", err.Error())
 		}
 	}()
@@ -111,7 +114,7 @@ func (auth *AuthController) RegisterCode(c echo.Context) error {
 	}
 	// 发送验证码至邮箱
 	go func() {
-		if err := auth.captcha.SendCaptcha(email); err != nil {
+		if err := auth.verify.SendCaptcha(email); err != nil {
 			c.Logger().Errorf("%s\n", err.Error())
 		}
 	}()
@@ -145,7 +148,7 @@ func (auth *AuthController) PasswordCode(c echo.Context) error {
 	}
 	// 发送验证码至邮箱
 	go func() {
-		if err := auth.captcha.SendResetLink(user.ID, info); err != nil {
+		if err := auth.verify.SendResetLink(user.ID, info); err != nil {
 			c.Logger().Errorf("%s\n", err.Error())
 		}
 	}()
@@ -169,7 +172,7 @@ func (auth *AuthController) EmailCode(c echo.Context) error {
 	} else {
 		// 发送验证码至邮箱
 		go func() {
-			if err := auth.captcha.SendCaptcha(email); err != nil {
+			if err := auth.verify.SendCaptcha(email); err != nil {
 				c.Logger().Errorf("%s\n", err.Error())
 			}
 		}()

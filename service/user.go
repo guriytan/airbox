@@ -1,7 +1,6 @@
 package service
 
 import (
-	"airbox/cache"
 	. "airbox/config"
 	"airbox/db"
 	"airbox/db/base"
@@ -14,7 +13,6 @@ type UserService struct {
 	file    base.FileDao
 	folder  base.FolderDao
 	user    base.UserDao
-	redis   *cache.RedisClient
 	storage base.StorageDao
 }
 
@@ -26,7 +24,6 @@ func GetUserService() *UserService {
 			file:    db.GetFileDao(),
 			folder:  db.GetFolderDao(),
 			user:    db.GetUserDao(),
-			redis:   cache.GetRedisClient(),
 			storage: db.GetStorageDao(),
 		}
 	}
@@ -73,7 +70,6 @@ func (u *UserService) Registry(username string, password string, email string) e
 	if err := tx.Commit().Error; err != nil {
 		return err
 	}
-	u.redis.DeleteCaptcha(email)
 	return nil
 }
 
@@ -97,7 +93,6 @@ func (u *UserService) ResetEmail(id, email string) error {
 	}); err != nil {
 		return err
 	}
-	u.redis.DeleteCaptcha(email)
 	return nil
 }
 
@@ -123,5 +118,5 @@ func (u *UserService) UnsubscribeUser(id, sid string) error {
 	if err := tx.Commit().Error; err != nil {
 		return err
 	}
-	return os.RemoveAll(FilePrefixMasterDirectory + sid + "/")
+	return os.RemoveAll(Env.Upload.Dir + sid + "/")
 }

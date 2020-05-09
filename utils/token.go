@@ -15,14 +15,13 @@ import (
 )
 
 const (
-	// CaptchaNumber iota means the chapcha has three type of char
+	// CaptchaNumber iota means the Captcha has three type of char
 	// CaptchaNumber is the number
 	CaptchaNumber int = iota
 	// CaptchaUppercase is the uppercase of letter
 	CaptchaUppercase
-	// CaptchaLowercase is the lowwercase of letter
+	// CaptchaLowercase is the lowercase of letter
 	CaptchaLowercase
-
 	// CaptchaLength indicate the Length of captcha
 	CaptchaLength = 8
 	// CaptchaType means captcha has three type, Number, Uppercase, Lowercase

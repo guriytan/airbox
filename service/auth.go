@@ -6,24 +6,24 @@ import (
 	"airbox/utils"
 )
 
-type CaptchaService struct {
+type AuthService struct {
 	redis *cache.RedisClient
 }
 
-var captcha *CaptchaService
+var auth *AuthService
 
-func GetCaptchaService() *CaptchaService {
-	if captcha == nil {
-		captcha = &CaptchaService{
+func GetAuthService() *AuthService {
+	if auth == nil {
+		auth = &AuthService{
 			redis: cache.GetRedisClient(),
 		}
 	}
-	return captcha
+	return auth
 }
 
 // VerifyEmailCaptcha 从缓存中读取key为email的值与code判断是否一致
 // 当相等时返回true，不相等返回false
-func (c *CaptchaService) VerifyEmailCaptcha(email string, code string) bool {
+func (c *AuthService) VerifyEmailCaptcha(email string, code string) bool {
 	if captcha := c.redis.GetCaptcha(email); captcha == code {
 		return true
 	}
@@ -31,7 +31,7 @@ func (c *CaptchaService) VerifyEmailCaptcha(email string, code string) bool {
 }
 
 // SendCaptcha 生成随机验证码发送至邮箱
-func (c *CaptchaService) SendCaptcha(email string) error {
+func (c *AuthService) SendCaptcha(email string) error {
 	captcha := utils.GetEmailCaptcha()
 	if err := c.redis.SetCaptcha(email, captcha); err != nil {
 		return err
@@ -39,11 +39,28 @@ func (c *CaptchaService) SendCaptcha(email string) error {
 	return utils.SendCaptcha(email, captcha)
 }
 
+// DeleteCaptcha 删除邮箱验证码
+func (c *AuthService) DeleteCaptcha(key string) {
+	c.redis.DeleteCaptcha(key)
+}
+
 // SendResetLink 根据邮箱生成链接发送至邮箱
-func (c *CaptchaService) SendResetLink(id, email string) error {
+func (c *AuthService) SendResetLink(id, email string) error {
 	captcha, err := utils.GenerateEmailToken(id)
 	if err != nil {
 		return err
 	}
 	return utils.SendResetLink(email, config.Env.Web.Site+"/reset/"+captcha)
+}
+
+// VerifyToken 验证请求里的token和redis中的token是否一致
+func (c *AuthService) VerifyToken(name, token string) bool {
+	//return c.redis.GetToken(name) == token
+	return true
+}
+
+// SetToken 储存当前最新的token
+func (c *AuthService) SetToken(name, token string) error {
+	//return c.redis.SetToken(name, token)
+	return nil
 }
