@@ -4,7 +4,7 @@
 想要查看前端页面请去[aribox-vue](https://github.com/guriytan/airbox-vue)
 
 ## TODO
-1.单点登录
+1. 单点登录
 
 2. 图片、视频、音频预览
 
