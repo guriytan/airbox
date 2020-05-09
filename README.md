@@ -3,6 +3,18 @@
 
 想要查看前端页面请去[aribox-vue](https://github.com/guriytan/airbox-vue)
 
+## TODO
+1.单点登录
+
+2. 图片、视频、音频预览
+
+3. 优化上传
+
+4. 实现分片Hash的妙传功能
+
+5. 离线下载
+
+6. 打包下载/多选操作
 
 ### 注意
 你需要创建`config.yml`文件配置启动信息，具体每个字段的含义在`config/env.go`中有comment。
