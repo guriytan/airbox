@@ -44,7 +44,7 @@ type Environment struct {
 	Upload struct {
 		Goroutine int    `yaml:"goroutine"` // Default routine, 2
 		Timeout   int    `yaml:"timeout"`   // Timeout for transmission, second
-		Dir       string `yaml:"dir"`       // Default Store Path, end with "/"
+		Dir       string `yaml:"dir"`       // Default Store Path, don't end with "/"
 		PartSize  int    `yaml:"part-size"` // Default download part size, KB
 	}
 	// 服务器配置

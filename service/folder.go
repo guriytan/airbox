@@ -11,6 +11,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type FolderService struct {
@@ -163,7 +164,7 @@ func (f *FolderService) copyFolderDFS(tx *gorm.DB, folder *model.Folder, fid str
 	for _, file := range fileByFolderID {
 		previous := file.Location // 原有文件路径
 		file.Model = model.Model{}
-		file.Location = Env.Upload.Dir + file.StorageID + "/" + uuid.New().String() + "/"
+		file.Location = Env.Upload.Dir + "/" + file.StorageID + "/" + uuid.New().String() + "/"
 		_ = os.MkdirAll(file.Location, os.ModePerm)
 		file.FolderID = &folder.ID // 复制文件的Fid为新文件夹的新ID
 		if err := f.file.InsertFile(tx, &file); err != nil {
@@ -200,4 +201,34 @@ func (f *FolderService) MoveFolder(fid, id string) error {
 		save["father_id"] = nil
 	}
 	return f.folder.UpdateFolder(DB, id, save)
+}
+
+func (f *FolderService) CreateFolder(filepath, sid, fid string) (string, error) {
+	// 新建文件对应的文件夹
+	if filepath != "" {
+		// 分割文件夹路径
+		split, query := strings.Split(filepath, "/"), true
+		for _, p := range split {
+			// 查询该层文件夹路径是否存在，若存在则直接进行下一层
+			if query {
+				if folder, err := f.folder.SelectFolderByName(DB, p, sid, fid); err == nil {
+					fid = folder.ID
+					continue
+				}
+			}
+			// 若不存在，则新建文件夹
+			// 由于该层文件夹是新建的，因此在该层文件夹之后的文件夹都不可能会存在
+			// 因此不需要再查询文件夹
+			folder := &model.Folder{StorageID: sid, Name: p}
+			if fid != "" {
+				folder.FatherID = &fid
+			}
+			if err := f.folder.InsertFolder(DB, folder); err != nil {
+				return "", err
+			}
+			fid = folder.ID
+			query = false
+		}
+	}
+	return fid, nil
 }

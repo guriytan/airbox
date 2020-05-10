@@ -118,5 +118,5 @@ func (u *UserService) UnsubscribeUser(id, sid string) error {
 	if err := tx.Commit().Error; err != nil {
 		return err
 	}
-	return os.RemoveAll(Env.Upload.Dir + sid + "/")
+	return os.RemoveAll(Env.Upload.Dir + "/" + sid + "/")
 }

@@ -17,8 +17,6 @@ import (
 type FileService struct {
 	file    base.FileDao
 	storage base.StorageDao
-	folder  base.FolderDao
-	user    base.UserDao
 }
 
 // GetFileByID 获取文件信息，用于下载
@@ -47,45 +45,17 @@ func (f *FileService) SelectFileTypeCount(sid string) (types []model.Statistics,
 }
 
 // UploadFile 保存文件信息，并更新数据仓库的容量大小
-func (f *FileService) UploadFile(part *multipart.Part, size uint64, id, fid string) (*model.File, error) {
-	filename, filepath := part.FileName(), part.FormName()
+func (f *FileService) UploadFile(filepath, sid, fid string, part *multipart.Part, size uint64) (string, error) {
+	filename := part.FileName()
+	// 由于在上传文件夹模型下Filename()将有前置文件夹路径。因此统一剪切
+	filename = filename[strings.LastIndex(filename, "/")+1:]
 	if filename == "" {
-		return nil, errors.New("without file")
+		return "", errors.New("without file")
 	}
-	user, err := f.user.SelectUserByID(id)
-	if err != nil {
-		return nil, err
-	} else if user.Storage.CurrentSize+size >= user.Storage.MaxSize {
-		return nil, errors.New(ErrorOutOfSpace)
-	}
-	// 新建文件对应的文件夹
-	if filepath != "" && filepath != "file" {
-		filename = filename[strings.LastIndex(filename, "/")+1:]
-		split, query := strings.Split(filepath, "/"), true
-		for _, p := range split {
-			if query {
-				if folder, err := f.folder.SelectFolderByName(DB, p, user.Storage.ID, fid); err == nil {
-					fid = folder.ID
-					continue
-				}
-			}
-			folder := &model.Folder{StorageID: user.Storage.ID, Name: p}
-			if fid != "" {
-				folder.FatherID = &fid
-			}
-			if err = f.folder.InsertFolder(DB, folder); err != nil {
-				return nil, err
-			}
-			fid = folder.ID
-			query = false
-		}
-	}
-	// 计算文件实际存储路径
-	filepath = Env.Upload.Dir + user.Storage.ID + "/" + uuid.New().String() + "/"
 	// 判断是否已存在同名文件并修改文件名（增加数字编号）
 	i := 1
 	for {
-		if _, err := f.file.SelectFileByName(DB, filename, user.Storage.ID, fid); err != nil {
+		if _, err := f.file.SelectFileByName(DB, filename, sid, fid); err != nil {
 			break
 		}
 		filename = utils.AddIndexToFilename(filename, i)
@@ -93,23 +63,18 @@ func (f *FileService) UploadFile(part *multipart.Part, size uint64, id, fid stri
 	}
 	// 调用Upload上传并返回文件长度
 	if err := utils.Upload(filepath, filename, part, size); err != nil {
-		return nil, err
+		return "", err
 	}
-	file, err := f.storeFile(filename, filepath, size, user.Storage.ID, fid)
-	if err != nil {
-		if err = os.RemoveAll(filepath); err != nil {
-			return nil, err
-		}
-	}
-	return file, nil
+	return filename, nil
 }
 
-// storeFile 保存文件信息并更新仓库现容量大小
-func (f *FileService) storeFile(filename, filepath string, size uint64, sid, fid string) (*model.File, error) {
+// StoreFile 保存文件信息并更新仓库现容量大小
+func (f *FileService) StoreFile(md5, filename, filepath string, size uint64, sid, fid string) (*model.File, error) {
 	suffix := strings.ToLower(path.Ext(filename))
 	file := &model.File{
 		Name:      filename,
 		Size:      size,
+		Hash:      md5,
 		Location:  filepath,
 		StorageID: sid,
 		Suffix:    suffix,
@@ -118,16 +83,24 @@ func (f *FileService) storeFile(filename, filepath string, size uint64, sid, fid
 	if fid != "" {
 		file.FolderID = &fid
 	}
-	tx := DB.Begin()
-	if err := f.file.InsertFile(tx, file); err != nil {
-		tx.Rollback()
-		return nil, err
+	// 匿名函数主要用于判断错误并执行删除文件操作
+	store := func() error {
+		tx := DB.Begin()
+		if err := f.file.InsertFile(tx, file); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := f.storage.UpdateCurrentSize(tx, sid, int64(size)); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := tx.Commit().Error; err != nil {
+			return err
+		}
+		return nil
 	}
-	if err := f.storage.UpdateCurrentSize(tx, sid, int64(size)); err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-	if err := tx.Commit().Error; err != nil {
+	if err := store(); err != nil {
+		_ = os.RemoveAll(filepath)
 		return nil, err
 	}
 	return file, nil
@@ -200,9 +173,9 @@ func (f *FileService) CopyFile(fid, id string) error {
 	if _, err = f.file.SelectFileByName(DB, file.Name, file.StorageID, fid); err == nil {
 		return errors.New(ErrorOfConflict)
 	}
-	filepath := Env.Upload.Dir + file.StorageID + "/" + uuid.New().String() + "/"
+	filepath := Env.Upload.Dir + "/" + file.StorageID + "/" + uuid.New().String() + "/"
 	_ = os.MkdirAll(filepath, os.ModePerm)
-	if _, err := f.storeFile(file.Name, filepath, file.Size, file.StorageID, fid); err != nil {
+	if _, err := f.StoreFile(file.Hash, file.Name, filepath, file.Size, file.StorageID, fid); err != nil {
 		return err
 	}
 	if _, err := utils.CopyFile(filepath+file.Name, file.Location+file.Name); err != nil {
@@ -218,8 +191,6 @@ func GetFileService() *FileService {
 		file = &FileService{
 			file:    db.GetFileDao(),
 			storage: db.GetStorageDao(),
-			folder:  db.GetFolderDao(),
-			user:    db.GetUserDao(),
 		}
 	}
 	return file
