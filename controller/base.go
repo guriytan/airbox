@@ -38,6 +38,11 @@ func (*BaseController) downloadFile(c echo.Context, file *model.File) error {
 	c.Response().Header().Set("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Response().Header().Set("Content-Disposition", "attachment; filename="+url.QueryEscape(stat.Name()))
 	http.ServeContent(c.Response(), c.Request(), stat.Name(), stat.ModTime(), open)
+	defer func() {
+		if err = open.Close(); err != nil {
+			c.Logger().Errorf("%s\n", err.Error())
+		}
+	}()
 	return nil
 }
 

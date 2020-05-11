@@ -66,22 +66,26 @@ func (f *FileController) UploadFile(c echo.Context) error {
 			// 读取文件的大小
 			s, err := readString(part)
 			if err != nil {
+				_ = part.Close()
 				c.Logger().Errorf("%s\n", err.Error())
 				return c.JSON(http.StatusBadRequest, err.Error())
 			}
 			size, err = strconv.ParseUint(s, 10, 64)
 			if err != nil {
+				_ = part.Close()
 				c.Logger().Errorf("%s\n", err.Error())
 				return c.JSON(http.StatusBadRequest, err.Error())
 			}
 			// 判断仓库的剩余容量是否足以存放该文件
 			if user.Storage.CurrentSize+size >= user.Storage.MaxSize {
+				_ = part.Close()
 				return c.JSON(http.StatusBadRequest, config.ErrorOutOfSpace)
 			}
 		case "md5":
 			// 读取文件的MD5
 			md5, err = readString(part)
 			if err != nil {
+				_ = part.Close()
 				c.Logger().Errorf("%s\n", err.Error())
 				return c.JSON(http.StatusBadRequest, err.Error())
 			}
@@ -90,10 +94,12 @@ func (f *FileController) UploadFile(c echo.Context) error {
 			// 并在数据库中创建每一层文件夹，最终返回最终层文件夹fid
 			filepath, err := readString(part)
 			if err != nil {
+				_ = part.Close()
 				c.Logger().Errorf("%s\n", err.Error())
 				return c.JSON(http.StatusBadRequest, err.Error())
 			}
 			if fid, err = f.folder.CreateFolder(filepath, sid, fid); err != nil {
+				_ = part.Close()
 				c.Logger().Errorf("%s\n", err.Error())
 				return c.JSON(http.StatusInternalServerError, err.Error())
 			}
@@ -103,11 +109,13 @@ func (f *FileController) UploadFile(c echo.Context) error {
 			// 调用service方法保存文件数据
 			filename, err := f.file.UploadFile(filepath, sid, fid, part, size)
 			if err != nil {
+				_ = part.Close()
 				c.Logger().Errorf("%s\n", err.Error())
 				return c.JSON(http.StatusInternalServerError, err.Error())
 			}
 			file, err := f.file.StoreFile(md5, filename, filepath, size, sid, fid)
 			if err != nil {
+				_ = part.Close()
 				c.Logger().Errorf("%s\n", err.Error())
 				return c.JSON(http.StatusInternalServerError, err.Error())
 			}
