@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"airbox/global"
 	"airbox/model"
 	"airbox/service"
 	"github.com/labstack/echo/v4"
@@ -28,12 +29,12 @@ func GetFolderController() *FolderController {
 func (f *FolderController) AddFolder(c echo.Context) error {
 	name, fid := c.FormValue("name"), c.FormValue("fid")
 	if name == "" {
-		return c.JSON(http.StatusBadRequest, "缺少名字")
+		return c.JSON(http.StatusBadRequest, global.ErrorOfWithoutName)
 	}
 	folder, err := f.folder.AddFolder(name, f.auth(c).Storage.ID, fid)
 	if err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"folder": folder,
@@ -59,8 +60,8 @@ func (f *FolderController) GetFolder(c echo.Context) error {
 		folders, err = f.folder.GetFolderByStorageID(f.auth(c).Storage.ID)
 	}
 	if err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"folder": folders,

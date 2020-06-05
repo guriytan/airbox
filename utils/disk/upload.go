@@ -1,7 +1,8 @@
-package utils
+package disk
 
 import (
-	. "airbox/config"
+	"airbox/global"
+	"airbox/utils"
 	"errors"
 	"io"
 	"os"
@@ -17,9 +18,9 @@ type Chunk struct {
 type Chunks []Chunk
 
 var (
-	partSize  = Env.Upload.PartSize * 1024
-	goroutine = Env.Upload.Goroutine
-	timeout   = int64(Env.Upload.Timeout)
+	partSize  = global.Env.Upload.PartSize * 1024
+	goroutine = global.Env.Upload.Goroutine
+	timeout   = int64(global.Env.Upload.Timeout)
 )
 
 func NewChunks(offset, size uint64, buffer []byte) Chunk {
@@ -35,11 +36,11 @@ func NewChunks(offset, size uint64, buffer []byte) Chunk {
 // Upload need to know the path to store file, the data stream and the length of data.
 // die chan is used to control the upload and the listener is used to notify the progress.
 func Upload(filepath, filename string, src io.Reader, contentLength uint64) error {
-	tempFilePath := filepath + filename + FileTempSuffix
+	tempFilePath := filepath + filename + global.FileTempSuffix
 
 	_ = os.MkdirAll(filepath, os.ModePerm)
 	// If the file does not exist, create one. If exists, the download will overwrite it.
-	fd, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_CREATE, FilePermMode)
+	fd, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_CREATE, global.FilePermMode)
 	if err != nil {
 		_ = os.RemoveAll(filepath)
 		return err
@@ -63,13 +64,13 @@ func Upload(filepath, filename string, src io.Reader, contentLength uint64) erro
 	defer CleanTemp(tempFilePath, filepath, count)
 
 	// Waiting for parts upload finished
-	timestamp := Epoch()
+	timestamp := utils.Epoch()
 	var completedBytes uint64
 	for {
 		select {
 		case part := <-results:
 			completedBytes += part.Size
-			timestamp = Epoch()
+			timestamp = utils.Epoch()
 		case err := <-failed:
 			close(stop)
 			return err
@@ -77,7 +78,7 @@ func Upload(filepath, filename string, src io.Reader, contentLength uint64) erro
 		}
 
 		// Handle timeout
-		if Epoch()-timestamp > timeout {
+		if utils.Epoch()-timestamp > timeout {
 			close(stop)
 			return errors.New("timeout for transmission")
 		}
@@ -118,7 +119,7 @@ func UploadWorker(filePathTemp string, jobs <-chan Chunk, results chan<- Chunk, 
 		default:
 		}
 
-		fd, err := os.OpenFile(filePathTemp, os.O_WRONLY, FilePermMode)
+		fd, err := os.OpenFile(filePathTemp, os.O_WRONLY, global.FilePermMode)
 		if err != nil {
 			failed <- err
 			break

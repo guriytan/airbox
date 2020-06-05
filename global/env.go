@@ -1,15 +1,10 @@
-package config
+package global
 
 import (
-	json "github.com/json-iterator/go"
+	"airbox/config"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
-)
-
-var (
-	Json = json.ConfigCompatibleWithStandardLibrary
-	Env  = loadConfig("./config.yml")
 )
 
 // Config 环境配置对象
@@ -69,8 +64,9 @@ func loadConfig(path string) *Environment {
 	return env
 }
 
-func Init() {
-	initializeRedis()
-	initializeDB()
-	initializeMail()
+func init() {
+	config.InitializeLogger()
+	config.InitializeRedis()
+	config.InitializeDB()
+	config.InitializeMail()
 }

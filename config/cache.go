@@ -1,27 +1,29 @@
 package config
 
 import (
+	"airbox/global"
 	"fmt"
 	"github.com/go-redis/redis"
-	"log"
 	"time"
 )
 
-var (
-	RedisCache *redis.Client
-)
+var redisCache *redis.Client
 
-// initializeRedis 用于Redis初始化
-func initializeRedis() {
-	RedisCache = redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%s", Env.Redis.Host, Env.Redis.Port),
-		Password:     Env.Redis.Password,
-		MinIdleConns: Env.Redis.MinIdle,
-		PoolSize:     Env.Redis.Pool,
-		IdleTimeout:  time.Duration(Env.Redis.Timeout),
+// InitializeRedis 用于Redis初始化
+func InitializeRedis() {
+	redisCache = redis.NewClient(&redis.Options{
+		Addr:         fmt.Sprintf("%s:%s", global.Env.Redis.Host, global.Env.Redis.Port),
+		Password:     global.Env.Redis.Password,
+		MinIdleConns: global.Env.Redis.MinIdle,
+		PoolSize:     global.Env.Redis.Pool,
+		IdleTimeout:  time.Duration(global.Env.Redis.Timeout),
 	})
-	err := RedisCache.Ping().Err()
+	err := redisCache.Ping().Err()
 	if err != nil {
-		log.Fatalf("failed to connect redis: %s\n", err.Error())
+		panic(fmt.Sprintf("redis 初始化失败: %v", err))
 	}
+}
+
+func GetRedis() *redis.Client {
+	return redisCache
 }

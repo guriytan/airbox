@@ -1,11 +1,11 @@
 package main
 
 import (
-	. "airbox/config"
+	"airbox/global"
+	"log"
 )
 
 func main() {
-	Init()
-	router := NewRouter().Init().PathMapping()
-	router.Logger.Fatal(router.Start(Env.Web.Port))
+	router := NewRouter().PathMapping()
+	log.Fatal(router.Start(global.Env.Web.Port))
 }

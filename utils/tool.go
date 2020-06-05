@@ -2,6 +2,8 @@ package utils
 
 import (
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,4 +24,10 @@ func Exp(ttl time.Duration) int64 {
 // CheckEmailFormat 检查邮箱格式
 func CheckEmailFormat(email string) bool {
 	return reg.MatchString(email)
+}
+
+// AddIndexToFilename used to rename the file if the file is exist
+func AddIndexToFilename(file string, index int) string {
+	split := strings.LastIndex(file, ".")
+	return file[:split] + "(" + strconv.FormatInt(int64(index), 10) + ")" + file[split:]
 }

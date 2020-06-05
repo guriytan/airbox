@@ -7,9 +7,10 @@ import (
 
 type Folder struct {
 	Model
-	StorageID string  `gorm:"type:varchar(36);index"` // 所处数据仓库ID
-	FatherID  *string `gorm:"type:varchar(36);index"` // 父文件夹ID，当ID为0时文件夹直属数据仓库
-	Name      string  `gorm:"type:varchar(50);index"` //文件夹名
+	StorageID string  `gorm:"type:varchar(36);index"`     // 所处数据仓库ID
+	FatherID  *string `gorm:"type:varchar(36);index"`     // 父文件夹ID，当ID为0时文件夹直属数据仓库
+	Name      string  `gorm:"type:varchar(50);index"`     // 文件夹名
+	Path      string  `gorm:"type:varchar(200)";json:"-"` // 对父文件夹路径的冗余存储
 }
 
 func (f *Folder) BeforeCreate(scope *gorm.Scope) error {

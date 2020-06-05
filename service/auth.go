@@ -2,8 +2,10 @@ package service
 
 import (
 	"airbox/cache"
-	"airbox/config"
+	"airbox/global"
 	"airbox/utils"
+	"airbox/utils/encryption"
+	"github.com/pkg/errors"
 )
 
 type AuthService struct {
@@ -32,7 +34,7 @@ func (c *AuthService) VerifyEmailCaptcha(email string, code string) bool {
 
 // SendCaptcha 生成随机验证码发送至邮箱
 func (c *AuthService) SendCaptcha(email string) error {
-	captcha := utils.GetEmailCaptcha()
+	captcha := encryption.GetEmailCaptcha()
 	if err := c.redis.SetCaptcha(email, captcha); err != nil {
 		return err
 	}
@@ -46,21 +48,19 @@ func (c *AuthService) DeleteCaptcha(key string) {
 
 // SendResetLink 根据邮箱生成链接发送至邮箱
 func (c *AuthService) SendResetLink(id, email string) error {
-	captcha, err := utils.GenerateEmailToken(id)
+	captcha, err := encryption.GenerateEmailToken(id)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
-	return utils.SendResetLink(email, config.Env.Web.Site+"/reset/"+captcha)
+	return utils.SendResetLink(email, global.Env.Web.Site+"/reset/"+captcha)
 }
 
 // VerifyToken 验证请求里的token和redis中的token是否一致
 func (c *AuthService) VerifyToken(name, token string) bool {
-	//return c.redis.GetToken(name) == token
-	return true
+	return c.redis.GetToken(name) == token
 }
 
 // SetToken 储存当前最新的token
 func (c *AuthService) SetToken(name, token string) error {
-	//return c.redis.SetToken(name, token)
-	return nil
+	return c.redis.SetToken(name, token)
 }

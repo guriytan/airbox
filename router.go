@@ -1,24 +1,14 @@
 package main
 
 import (
-	. "airbox/config"
 	"airbox/controller"
 	middleware2 "airbox/middleware"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"os"
 )
 
 type Router struct {
 	*echo.Echo
-}
-
-func (router *Router) Init() *Router {
-	// 注册日志
-	router.Logger.SetOutput(os.Stderr)
-	router.Logger.SetPrefix("[airbox]")
-	DB.SetLogger(router.Logger)
-	return router
 }
 
 func (router *Router) PathMapping() *Router {

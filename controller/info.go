@@ -1,9 +1,10 @@
 package controller
 
 import (
-	"airbox/config"
+	"airbox/global"
 	"airbox/service"
 	"airbox/utils"
+	"airbox/utils/encryption"
 	"github.com/labstack/echo/v4"
 	"net/http"
 )
@@ -35,34 +36,34 @@ func (info *InfoController) ListFile(c echo.Context) error {
 	if fid := c.QueryParam("fid"); fid != "" {
 		folders, err := info.folder.GetFolderByFatherID(fid)
 		if err != nil {
-			c.Logger().Errorf("%s\n", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			global.LOGGER.Printf("%s\n", err.Error())
+			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 		data["folders"] = folders
 		files, err := info.file.SelectFileByFolderID(fid)
 		if err != nil {
-			c.Logger().Errorf("%s\n", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			global.LOGGER.Printf("%s\n", err.Error())
+			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 		data["files"] = files
-		path, err := info.folder.GetFolderByID(fid)
+		path, err := info.folder.GetFolderByIDWithPath(fid)
 		if err != nil {
-			c.Logger().Errorf("%s\n", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			global.LOGGER.Printf("%s\n", err.Error())
+			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 		data["path"] = path
 	} else {
 		sid := info.auth(c).Storage.ID
 		folders, err := info.folder.GetFolderByStorageID(sid)
 		if err != nil {
-			c.Logger().Errorf("%s\n", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			global.LOGGER.Printf("%s\n", err.Error())
+			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 		data["folders"] = folders
 		files, err := info.file.GetFileByStorageID(sid)
 		if err != nil {
-			c.Logger().Errorf("%s\n", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			global.LOGGER.Printf("%s\n", err.Error())
+			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 		data["files"] = files
 	}
@@ -74,13 +75,13 @@ func (info *InfoController) UserInfo(c echo.Context) error {
 	data := make(map[string]interface{})
 	user, err := info.user.GetUserByID(info.auth(c).ID)
 	if err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	count, err := info.file.SelectFileTypeCount(user.Storage.ID)
 	if err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	data["info"] = user
 	data["count"] = count
@@ -91,8 +92,8 @@ func (info *InfoController) UserInfo(c echo.Context) error {
 func (info *InfoController) ListType(c echo.Context) error {
 	files, err := info.file.GetFileByType(c.QueryParam("type"))
 	if err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"files": files,
@@ -103,19 +104,19 @@ func (info *InfoController) ListType(c echo.Context) error {
 func (info *InfoController) ShareFile(c echo.Context) error {
 	token := c.FormValue("link")
 	if token == "" {
-		return c.JSON(http.StatusForbidden, config.ErrorWithoutToken)
+		return c.JSON(http.StatusForbidden, global.ErrorWithoutToken)
 	}
-	fileID, exp, err := utils.ParseShareToken(token)
+	fileID, exp, err := encryption.ParseShareToken(token)
 	if err != nil {
-		c.Logger().Warnf("failed to parse token: a", err)
-		return c.JSON(http.StatusForbidden, "token错误")
+		global.LOGGER.Printf("failed to parse token: %s\n", err)
+		return c.JSON(http.StatusForbidden, global.ErrorOfWrongToken)
 	} else if exp < utils.Epoch() {
-		return c.JSON(http.StatusUnauthorized, config.ErrorOutOfDated)
+		return c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
 	}
 	fileByID, err := info.file.GetFileByID(fileID)
 	if err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return info.downloadFile(c, fileByID)
 }

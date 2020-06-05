@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"airbox/global"
 	"airbox/model"
 	"net/http"
 	"net/url"
@@ -25,22 +26,22 @@ func (*BaseController) auth(c echo.Context) *model.User {
 
 // downloadFile 公共使用的下载文件模块
 func (*BaseController) downloadFile(c echo.Context, file *model.File) error {
-	open, err := os.Open(file.Location + file.Name)
+	open, err := os.Open(file.FileEntity.Path + file.FileEntity.Name)
 	if err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	stat, err := open.Stat()
 	if err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	c.Response().Header().Set("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Response().Header().Set("Content-Disposition", "attachment; filename="+url.QueryEscape(stat.Name()))
 	http.ServeContent(c.Response(), c.Request(), stat.Name(), stat.ModTime(), open)
 	defer func() {
 		if err = open.Close(); err != nil {
-			c.Logger().Errorf("%s\n", err.Error())
+			global.LOGGER.Printf("%s\n", err.Error())
 		}
 	}()
 	return nil
@@ -56,8 +57,8 @@ func (*BaseController) Update(c echo.Context, rename, copy, move func(param, id 
 	if name != "" {
 		// 重命名
 		if err := rename(name, id); err != nil {
-			c.Logger().Errorf("%s\n", err.Error())
-			return c.JSON(http.StatusInternalServerError, err.Error())
+			global.LOGGER.Printf("%s\n", err.Error())
+			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 	} else {
 		if fid == id {
@@ -66,14 +67,14 @@ func (*BaseController) Update(c echo.Context, rename, copy, move func(param, id 
 		if copy2 == "true" {
 			// 复制
 			if err := copy(fid, id); err != nil {
-				c.Logger().Errorf("%s\n", err.Error())
-				return c.JSON(http.StatusInternalServerError, err.Error())
+				global.LOGGER.Printf("%s\n", err.Error())
+				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			}
 		} else if copy2 == "false" {
 			// 移动
 			if err := move(fid, id); err != nil {
-				c.Logger().Errorf("%s\n", err.Error())
-				return c.JSON(http.StatusInternalServerError, err.Error())
+				global.LOGGER.Printf("%s\n", err.Error())
+				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			}
 		}
 	}
@@ -83,8 +84,8 @@ func (*BaseController) Update(c echo.Context, rename, copy, move func(param, id 
 // Delete 删除文件或文件夹
 func (*BaseController) Delete(c echo.Context, delete func(id string) error) error {
 	if err := delete(c.Param("id")); err != nil {
-		c.Logger().Errorf("%s\n", err.Error())
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		global.LOGGER.Printf("%s\n", err.Error())
+		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.NoContent(http.StatusOK)
 }

@@ -40,9 +40,9 @@ func (f *FileDaoImpl) SelectFileByName(db *gorm.DB, name, sid, fid string) (*mod
 	return file, err
 }
 
-// SelectFileByStorageID 获取在数据仓库Sid下，父文件夹为Fid的文件
+// SelectFileByStorageID 获取在数据仓库Sid下的文件
 func (f *FileDaoImpl) SelectFileByStorageID(db *gorm.DB, sid string) (files []model.File, err error) {
-	err = db.Where("storage_id = ? and folder_id is null", sid).Order("created_at desc").Find(&files).Error
+	err = db.Preload("FileEntity").Where("storage_id = ? and folder_id is null", sid).Order("created_at desc").Find(&files).Error
 	return
 }
 
@@ -59,19 +59,19 @@ func (f *FileDaoImpl) UpdateFile(db *gorm.DB, id string, file map[string]interfa
 // SelectFileByID 根据文件ID获得文件
 func (f *FileDaoImpl) SelectFileByID(db *gorm.DB, id string) (*model.File, error) {
 	file := &model.File{}
-	err := db.Where("id = ?", id).First(file).Error
+	err := db.Preload("FileEntity").Where("id = ?", id).First(file).Error
 	return file, err
 }
 
 // SelectFileByFolderID 根据文件夹ID获得文件
 func (f *FileDaoImpl) SelectFileByFolderID(db *gorm.DB, id string) (files []model.File, err error) {
-	err = db.Where("folder_id = ?", id).Order("created_at desc").Find(&files).Error
+	err = db.Preload("FileEntity").Where("folder_id = ?", id).Order("created_at desc").Find(&files).Error
 	return
 }
 
 // SelectFileByType 根据文件类型获得文件
 func (f *FileDaoImpl) SelectFileByType(db *gorm.DB, t string) (files []model.File, err error) {
-	err = db.Where("type = ?", t).Order("created_at desc").Find(&files).Error
+	err = db.Preload("FileEntity").Where("type = ?", t).Order("created_at desc").Find(&files).Error
 	return
 }
 

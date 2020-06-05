@@ -9,12 +9,12 @@ import (
 type UserDao interface {
 	InsertUser(db *gorm.DB, user *model.User) error
 
-	DeleteUserByID(id string) error
+	DeleteUserByID(db *gorm.DB, id string) error
 
-	UpdateUser(user *model.User) error
+	UpdateUser(db *gorm.DB, user *model.User) error
 
-	SelectUserByID(id string) (*model.User, error)
-	SelectUserByPwdAndNameOrEmail(name, pwd string) (*model.User, error)
-	SelectUserByName(username string) (*model.User, error)
-	SelectUserByEmail(email string) (*model.User, error)
+	SelectUserByID(db *gorm.DB, id string) (*model.User, error)
+	SelectUserByPwdAndNameOrEmail(db *gorm.DB, name, pwd string) (*model.User, error)
+	SelectUserByName(db *gorm.DB, username string) (*model.User, error)
+	SelectUserByEmail(db *gorm.DB, email string) (*model.User, error)
 }
