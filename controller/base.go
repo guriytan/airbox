@@ -28,12 +28,12 @@ func (*BaseController) auth(c echo.Context) *model.User {
 func (*BaseController) downloadFile(c echo.Context, file *model.File) error {
 	open, err := os.Open(file.FileEntity.Path + file.FileEntity.Name)
 	if err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	stat, err := open.Stat()
 	if err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	c.Response().Header().Set("Access-Control-Expose-Headers", "Content-Disposition")
@@ -41,7 +41,7 @@ func (*BaseController) downloadFile(c echo.Context, file *model.File) error {
 	http.ServeContent(c.Response(), c.Request(), stat.Name(), stat.ModTime(), open)
 	defer func() {
 		if err = open.Close(); err != nil {
-			global.LOGGER.Printf("%s\n", err.Error())
+			global.LOGGER.Printf("%+v\n", err)
 		}
 	}()
 	return nil
@@ -57,23 +57,23 @@ func (*BaseController) Update(c echo.Context, rename, copy, move func(param, id 
 	if name != "" {
 		// 重命名
 		if err := rename(name, id); err != nil {
-			global.LOGGER.Printf("%s\n", err.Error())
+			global.LOGGER.Printf("%+v\n", err)
 			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 	} else {
 		if fid == id {
-			return c.JSON(http.StatusBadRequest, "不能复制或移动到自身")
+			return c.JSON(http.StatusBadRequest, global.ErrorOfCopyFile)
 		}
 		if copy2 == "true" {
 			// 复制
 			if err := copy(fid, id); err != nil {
-				global.LOGGER.Printf("%s\n", err.Error())
+				global.LOGGER.Printf("%+v\n", err)
 				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			}
 		} else if copy2 == "false" {
 			// 移动
 			if err := move(fid, id); err != nil {
-				global.LOGGER.Printf("%s\n", err.Error())
+				global.LOGGER.Printf("%+v\n", err)
 				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			}
 		}
@@ -84,7 +84,7 @@ func (*BaseController) Update(c echo.Context, rename, copy, move func(param, id 
 // Delete 删除文件或文件夹
 func (*BaseController) Delete(c echo.Context, delete func(id string) error) error {
 	if err := delete(c.Param("id")); err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.NoContent(http.StatusOK)

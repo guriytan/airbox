@@ -33,7 +33,7 @@ func (f *FolderController) AddFolder(c echo.Context) error {
 	}
 	folder, err := f.folder.AddFolder(name, f.auth(c).Storage.ID, fid)
 	if err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -60,7 +60,7 @@ func (f *FolderController) GetFolder(c echo.Context) error {
 		folders, err = f.folder.GetFolderByStorageID(f.auth(c).Storage.ID)
 	}
 	if err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{

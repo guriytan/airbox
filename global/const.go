@@ -54,6 +54,7 @@ const (
 	ErrorOfSameEmail        = "新邮箱不能与原邮箱一致"
 	ErrorOfSamePassword     = "不能与原密码一致"
 	ErrorOfExpectedLink     = "链接失效"
+	ErrorOfCopyFile         = "不能复制或移动到自身"
 )
 
 // 文件上传相关配置

@@ -36,9 +36,12 @@ func (c *AuthService) VerifyEmailCaptcha(email string, code string) bool {
 func (c *AuthService) SendCaptcha(email string) error {
 	captcha := encryption.GetEmailCaptcha()
 	if err := c.redis.SetCaptcha(email, captcha); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
-	return utils.SendCaptcha(email, captcha)
+	if err := utils.SendCaptcha(email, captcha); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 // DeleteCaptcha 删除邮箱验证码
@@ -52,7 +55,10 @@ func (c *AuthService) SendResetLink(id, email string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	return utils.SendResetLink(email, global.Env.Web.Site+"/reset/"+captcha)
+	if err := utils.SendResetLink(email, global.Env.Web.Site+"/reset/"+captcha); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 // VerifyToken 验证请求里的token和redis中的token是否一致
@@ -62,5 +68,8 @@ func (c *AuthService) VerifyToken(name, token string) bool {
 
 // SetToken 储存当前最新的token
 func (c *AuthService) SetToken(name, token string) error {
-	return c.redis.SetToken(name, token)
+	if err := c.redis.SetToken(name, token); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }

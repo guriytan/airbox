@@ -5,6 +5,7 @@ import (
 	"airbox/service"
 	"airbox/utils"
 	"airbox/utils/encryption"
+	"github.com/pkg/errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -25,8 +26,8 @@ func Login(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		claims, exp, err := encryption.ParseUserToken(token)
 		if err != nil {
-			global.LOGGER.Printf("failed to parse token: %s\n", err.Error())
-			return c.JSON(http.StatusForbidden, err.Error())
+			global.LOGGER.Printf("failed to parse token: %+v\n", errors.WithStack(err))
+			return c.JSON(http.StatusForbidden, global.ErrorWithoutToken)
 		}
 		// 解析token获得claims对象后，取claims的username作为key从redis中获取token，若token不一致则认为该用户在其他设备登录
 		// 因此需要重新登录
@@ -48,8 +49,8 @@ func CheckLink(next echo.HandlerFunc) echo.HandlerFunc {
 		token := c.QueryParam("token")
 		id, exp, err := encryption.ParseEmailToken(token)
 		if err != nil {
-			global.LOGGER.Printf("failed to parse token: %s\n", err.Error())
-			return c.JSON(http.StatusForbidden, err.Error())
+			global.LOGGER.Printf("failed to parse token: %+v\n", err)
+			return c.JSON(http.StatusForbidden, global.ErrorOfExpectedLink)
 		} else if exp < utils.Epoch() {
 			return c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
 		}

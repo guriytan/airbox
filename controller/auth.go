@@ -7,6 +7,7 @@ import (
 	"airbox/utils"
 	"airbox/utils/encryption"
 	"github.com/labstack/echo/v4"
+	"github.com/pkg/errors"
 	"net/http"
 )
 
@@ -45,16 +46,16 @@ func (auth *AuthController) LoginToken(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfPassword)
 	}
 	if user, err := auth.user.Login(user, password); err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	} else {
 		token, e := encryption.GenerateUserToken(user)
 		if e != nil {
-			global.LOGGER.Printf("%s\n", e.Error())
+			global.LOGGER.Printf("%+v\n", errors.WithStack(e))
 			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 		if err = auth.verify.SetToken(user.Name, token); err != nil {
-			global.LOGGER.Printf("%s\n", err.Error())
+			global.LOGGER.Printf("%+v\n", err)
 		}
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"token": token,
@@ -67,7 +68,7 @@ func (auth *AuthController) UnsubscribeCode(c echo.Context) error {
 	// 发送验证码至邮箱
 	go func() {
 		if err := auth.verify.SendCaptcha(auth.auth(c).Email); err != nil {
-			global.LOGGER.Printf("%s\n", err.Error())
+			global.LOGGER.Printf("%+v\n", err)
 		}
 	}()
 	return c.NoContent(http.StatusOK)
@@ -81,12 +82,12 @@ func (auth *AuthController) ShareLink(c echo.Context) error {
 	}
 	fileByID, err := auth.file.GetFileByID(id)
 	if err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	token, err := encryption.GenerateShareToken(fileByID.ID)
 	if err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", errors.WithStack(err))
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -116,7 +117,7 @@ func (auth *AuthController) RegisterCode(c echo.Context) error {
 	// 发送验证码至邮箱
 	go func() {
 		if err := auth.verify.SendCaptcha(email); err != nil {
-			global.LOGGER.Printf("%s\n", err.Error())
+			global.LOGGER.Printf("%+v\n", err)
 		}
 	}()
 	return c.NoContent(http.StatusOK)
@@ -148,7 +149,7 @@ func (auth *AuthController) PasswordCode(c echo.Context) error {
 	// 发送验证码至邮箱
 	go func() {
 		if err := auth.verify.SendResetLink(user.ID, info); err != nil {
-			global.LOGGER.Printf("%s\n", err.Error())
+			global.LOGGER.Printf("%+v\n", err)
 		}
 	}()
 	return c.NoContent(http.StatusOK)
@@ -171,7 +172,7 @@ func (auth *AuthController) EmailCode(c echo.Context) error {
 		// 发送验证码至邮箱
 		go func() {
 			if err := auth.verify.SendCaptcha(email); err != nil {
-				global.LOGGER.Printf("%s\n", err.Error())
+				global.LOGGER.Printf("%+v\n", err)
 			}
 		}()
 	}

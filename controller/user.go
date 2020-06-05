@@ -5,6 +5,7 @@ import (
 	"airbox/service"
 	"airbox/utils"
 	"airbox/utils/encryption"
+	"github.com/pkg/errors"
 
 	"net/http"
 
@@ -57,7 +58,7 @@ func (u *UserController) Register(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfExistUsername)
 	}
 	if err := u.user.Registry(username, password, email); err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	u.verify.DeleteCaptcha(email)
@@ -79,7 +80,7 @@ func (u *UserController) ResetPwd(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 	}
 	if err := u.user.ResetPwd(id, password); err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.NoContent(http.StatusOK)
@@ -96,7 +97,7 @@ func (u *UserController) ResetPwdByOrigin(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 	}
 	if err := u.user.ResetPwd(user.ID, password); err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.NoContent(http.StatusOK)
@@ -115,18 +116,18 @@ func (u *UserController) ResetEmail(c echo.Context) error {
 	} else if _, res := u.user.GetUserByEmail(email); !res {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfExistEmail)
 	} else if err := u.user.ResetEmail(user.ID, email); err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	} else {
 		u.verify.DeleteCaptcha(email)
 		user.Email = email
 		token, e := encryption.GenerateUserToken(user)
 		if e != nil {
-			global.LOGGER.Printf("%s\n", e.Error())
+			global.LOGGER.Printf("%+v\n", errors.WithStack(e))
 			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
 		if err = u.verify.SetToken(user.Name, token); err != nil {
-			global.LOGGER.Printf("%s\n", err.Error())
+			global.LOGGER.Printf("%+v\n", err)
 		}
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"token": token,
@@ -143,7 +144,7 @@ func (u *UserController) Unsubscribe(c echo.Context) error {
 	}
 	// 从数据库中删除相关信息并从磁盘删除文件
 	if err := u.user.UnsubscribeUser(user.ID, user.Storage.ID); err != nil {
-		global.LOGGER.Printf("%s\n", err.Error())
+		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.NoContent(http.StatusOK)
