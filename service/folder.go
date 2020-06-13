@@ -12,7 +12,7 @@ import (
 )
 
 type FolderService struct {
-	entity  base.FileEntityDao
+	entity  base.FileInfoDao
 	folder  base.FolderDao
 	file    base.FileDao
 	storage base.StorageDao
@@ -23,7 +23,7 @@ var folder *FolderService
 func GetFolderService() *FolderService {
 	if folder == nil {
 		folder = &FolderService{
-			entity:  db.GetFileEntityDao(),
+			entity:  db.GetFileInfoDao(),
 			folder:  db.GetFolderDao(),
 			file:    db.GetFileDao(),
 			storage: db.GetStorageDao(),
@@ -182,7 +182,7 @@ func (f *FolderService) copyFolderDFS(tx *gorm.DB, folder *model.Folder, fid str
 		return errors.WithStack(err)
 	}
 	for _, file := range fileByFolderID {
-		if _, err = insertFile(f.entity, f.file, f.storage, &file.FileEntity, file.StorageID, folder.ID); err != nil {
+		if _, err = insertFile(f.entity, f.file, f.storage, &file.FileInfo, file.StorageID, folder.ID); err != nil {
 			return errors.WithStack(err)
 		}
 	}

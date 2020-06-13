@@ -16,7 +16,7 @@ func Compress(files chan *model.File, dest io.Writer) error {
 		_ = w.Close()
 	}()
 	for file := range files {
-		open, err := os.Open(file.FileEntity.Path + file.FileEntity.Name)
+		open, err := os.Open(file.FileInfo.Path + file.FileInfo.Name)
 		if err != nil {
 			return err
 		}

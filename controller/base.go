@@ -26,7 +26,7 @@ func (*BaseController) auth(c echo.Context) *model.User {
 
 // downloadFile 公共使用的下载文件模块
 func (*BaseController) downloadFile(c echo.Context, file *model.File) error {
-	open, err := os.Open(file.FileEntity.Path + file.FileEntity.Name)
+	open, err := os.Open(file.FileInfo.Path + file.FileInfo.Name)
 	if err != nil {
 		global.LOGGER.Printf("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)

@@ -50,7 +50,10 @@ func createTables() {
 	if !db.HasTable(&model.File{}) {
 		db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4").CreateTable(&model.File{})
 	}
-	if !db.HasTable(&model.FileEntity{}) {
-		db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4").CreateTable(&model.FileEntity{})
+	if !db.HasTable(&model.FileInfo{}) {
+		db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4").CreateTable(&model.FileInfo{})
+	}
+	if !db.HasTable(&model.FileCount{}) {
+		db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4").CreateTable(&model.FileCount{})
 	}
 }

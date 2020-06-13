@@ -19,7 +19,7 @@ import (
 
 type FileService struct {
 	file    base.FileDao
-	entity  base.FileEntityDao
+	info    base.FileInfoDao
 	storage base.StorageDao
 }
 
@@ -69,7 +69,7 @@ func (f *FileService) SelectFileTypeCount(sid string) (types []model.Statistics,
 }
 
 // UploadFile 保存文件信息，并更新数据仓库的容量大小
-func (f *FileService) UploadFile(part *multipart.Part, sid, md5 string, size uint64) (*model.FileEntity, error) {
+func (f *FileService) UploadFile(part *multipart.Part, sid, md5 string, size uint64) (*model.FileInfo, error) {
 	// 计算文件实际存储路径
 	filepath := config.Env.Upload.Dir + "/" + sid + "/" + uuid.New().String() + "/"
 	filename := part.FileName()
@@ -82,27 +82,35 @@ func (f *FileService) UploadFile(part *multipart.Part, sid, md5 string, size uin
 	if err := disk.Upload(filepath, filename, part, size); err != nil {
 		return nil, errors.WithStack(err)
 	}
-	entity := &model.FileEntity{
+	info := &model.FileInfo{
 		Hash: md5,
 		Name: filename,
 		Size: size,
 		Path: filepath,
 	}
-	err := f.entity.InsertFileEntity(global.DB, entity)
+	tx := global.DB.Begin()
+	err := f.info.InsertFileInfo(tx, info)
 	if err != nil {
+		tx.Rollback()
 		return nil, errors.WithStack(err)
 	}
-	return entity, nil
+	err = f.info.InsertFileCount(tx, &model.FileCount{FileInfoID: info.ID})
+	if err != nil {
+		tx.Rollback()
+		return nil, errors.WithStack(err)
+	}
+	tx.Commit()
+	return info, nil
 }
 
 // StoreFile 保存文件信息并更新仓库现容量大小
-func (f *FileService) StoreFile(entity *model.FileEntity, sid, fid string) (*model.File, error) {
-	return insertFile(f.entity, f.file, f.storage, entity, sid, fid)
+func (f *FileService) StoreFile(info *model.FileInfo, sid, fid string) (*model.File, error) {
+	return insertFile(f.info, f.file, f.storage, info, sid, fid)
 }
 
 // DeleteFile 删除文件信息，并更新数据仓库的容量大小
 func (f *FileService) DeleteFile(id string) error {
-	return deleteFile(f.entity, f.file, f.storage, id)
+	return deleteFile(f.info, f.file, f.storage, id)
 }
 
 // RenameFile 重命名，需要判断当前文件夹下是否存在同样名字的文件
@@ -150,15 +158,15 @@ func (f *FileService) CopyFile(fid, id string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	_, err = f.StoreFile(&file.FileEntity, file.StorageID, fid)
+	_, err = f.StoreFile(&file.FileInfo, file.StorageID, fid)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	return nil
 }
 
-func (f *FileService) SelectFileByMD5(md5 string) (*model.FileEntity, error) {
-	byMD5, err := f.entity.SelectFileEntityByMD5(global.DB, md5)
+func (f *FileService) SelectFileByMD5(md5 string) (*model.FileInfo, error) {
+	byMD5, err := f.info.SelectFileInfoByMD5(global.DB, md5)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -170,7 +178,7 @@ var file *FileService
 func GetFileService() *FileService {
 	if file == nil {
 		file = &FileService{
-			entity:  db.GetFileEntityDao(),
+			info:    db.GetFileInfoDao(),
 			file:    db.GetFileDao(),
 			storage: db.GetStorageDao(),
 		}
@@ -178,7 +186,7 @@ func GetFileService() *FileService {
 	return file
 }
 
-func deleteFile(entityDao base.FileEntityDao, fileDao base.FileDao, storageDao base.StorageDao, id string) error {
+func deleteFile(infoDao base.FileInfoDao, fileDao base.FileDao, storageDao base.StorageDao, id string) error {
 	tx := global.DB.Begin()
 	file, err := fileDao.SelectFileByID(tx, id)
 	if err != nil {
@@ -189,12 +197,17 @@ func deleteFile(entityDao base.FileEntityDao, fileDao base.FileDao, storageDao b
 		tx.Rollback()
 		return errors.WithStack(err)
 	}
-	if err := storageDao.UpdateCurrentSize(tx, file.StorageID, int64(-file.FileEntity.Size)); err != nil {
+	if err := storageDao.UpdateCurrentSize(tx, file.StorageID, int64(-file.FileInfo.Size)); err != nil {
 		tx.Rollback()
 		return errors.WithStack(err)
 	}
-	if file.FileEntity.Link > 1 {
-		if err := entityDao.UpdateFileEntity(tx, file.FileEntity.ID, -1); err != nil {
+	count, err := infoDao.SelectFileCountByInfoID(tx, file.FileInfoID)
+	if err != nil {
+		tx.Rollback()
+		return errors.WithStack(err)
+	}
+	if count.Link > 1 {
+		if err := infoDao.UpdateFileInfo(tx, file.FileInfoID, -1); err != nil {
 			tx.Rollback()
 			return errors.WithStack(err)
 		}
@@ -202,11 +215,19 @@ func deleteFile(entityDao base.FileEntityDao, fileDao base.FileDao, storageDao b
 			return errors.WithStack(err)
 		}
 	} else {
+		if err := infoDao.DeleteFileInfo(tx, file.FileInfoID); err != nil {
+			tx.Rollback()
+			return errors.WithStack(err)
+		}
+		if err := infoDao.DeleteFileCount(tx, file.FileInfoID); err != nil {
+			tx.Rollback()
+			return errors.WithStack(err)
+		}
 		if err := tx.Commit().Error; err != nil {
 			return errors.WithStack(err)
 		}
 		go func() {
-			err = os.RemoveAll(file.FileEntity.Path)
+			err = os.RemoveAll(file.FileInfo.Path)
 			if err != nil {
 				global.LOGGER.Printf("%s\n", err.Error())
 			}
@@ -215,9 +236,9 @@ func deleteFile(entityDao base.FileEntityDao, fileDao base.FileDao, storageDao b
 	return nil
 }
 
-func insertFile(entityDao base.FileEntityDao, fileDao base.FileDao, storageDao base.StorageDao,
-	entity *model.FileEntity, sid, fid string) (*model.File, error) {
-	filename := entity.Name
+func insertFile(infoDao base.FileInfoDao, fileDao base.FileDao, storageDao base.StorageDao,
+	info *model.FileInfo, sid, fid string) (*model.File, error) {
+	filename := info.Name
 	// 判断是否已存在同名文件并修改文件名（增加数字编号）
 	i := 1
 	for {
@@ -230,10 +251,10 @@ func insertFile(entityDao base.FileEntityDao, fileDao base.FileDao, storageDao b
 		i++
 	}
 	file := &model.File{
-		Name:       filename,
-		StorageID:  sid,
-		Type:       int(utils.GetFileType(strings.ToLower(path.Ext(filename)))),
-		FileEntity: *entity,
+		Name:      filename,
+		StorageID: sid,
+		Type:      int(utils.GetFileType(strings.ToLower(path.Ext(filename)))),
+		FileInfo:  *info,
 	}
 	if fid != "" {
 		file.FolderID = &fid
@@ -243,11 +264,11 @@ func insertFile(entityDao base.FileEntityDao, fileDao base.FileDao, storageDao b
 		tx.Rollback()
 		return nil, errors.WithStack(err)
 	}
-	if err := storageDao.UpdateCurrentSize(tx, sid, int64(entity.Size)); err != nil {
+	if err := storageDao.UpdateCurrentSize(tx, sid, int64(info.Size)); err != nil {
 		tx.Rollback()
 		return nil, errors.WithStack(err)
 	}
-	if err := entityDao.UpdateFileEntity(tx, entity.ID, 1); err != nil {
+	if err := infoDao.UpdateFileInfo(tx, info.ID, 1); err != nil {
 		tx.Rollback()
 		return nil, errors.WithStack(err)
 	}
