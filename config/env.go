@@ -1,7 +1,6 @@
-package global
+package config
 
 import (
-	"airbox/config"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
@@ -64,9 +63,12 @@ func loadConfig(path string) *Environment {
 	return env
 }
 
+var Env *Environment
+
 func init() {
-	config.InitializeLogger()
-	config.InitializeRedis()
-	config.InitializeDB()
-	config.InitializeMail()
+	Env = loadConfig("./config.yml")
+	InitializeLogger()
+	InitializeRedis()
+	InitializeDB()
+	InitializeMail()
 }

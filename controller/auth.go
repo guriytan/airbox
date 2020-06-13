@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"airbox/config"
 	"airbox/global"
 	"airbox/model"
 	"airbox/service"
@@ -98,7 +99,7 @@ func (auth *AuthController) ShareLink(c echo.Context) error {
 // RegisterCode 发送注册需要的邮箱验证码
 // 验证用户名长度和邮箱格式， 验证用户名和邮箱是否唯一
 func (auth *AuthController) RegisterCode(c echo.Context) error {
-	if !global.Env.Register {
+	if !config.Env.Register {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfForbidRegister)
 	}
 	username, email := c.FormValue("username"), c.FormValue("email")

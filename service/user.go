@@ -1,6 +1,7 @@
 package service
 
 import (
+	"airbox/config"
 	"airbox/db"
 	"airbox/db/base"
 	"airbox/global"
@@ -143,7 +144,7 @@ func (u *UserService) UnsubscribeUser(id, sid string) error {
 	if err := tx.Commit().Error; err != nil {
 		return errors.WithStack(err)
 	}
-	err := os.RemoveAll(global.Env.Upload.Dir + "/" + sid + "/")
+	err := os.RemoveAll(config.Env.Upload.Dir + "/" + sid + "/")
 	if err != nil {
 		return errors.WithStack(err)
 	}

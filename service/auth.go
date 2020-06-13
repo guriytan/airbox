@@ -2,7 +2,7 @@ package service
 
 import (
 	"airbox/cache"
-	"airbox/global"
+	"airbox/config"
 	"airbox/utils"
 	"airbox/utils/encryption"
 	"github.com/pkg/errors"
@@ -55,7 +55,7 @@ func (c *AuthService) SendResetLink(id, email string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if err := utils.SendResetLink(email, global.Env.Web.Site+"/reset/"+captcha); err != nil {
+	if err := utils.SendResetLink(email, config.Env.Web.Site+"/reset/"+captcha); err != nil {
 		return errors.WithStack(err)
 	}
 	return nil

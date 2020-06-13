@@ -7,7 +7,6 @@ import (
 )
 
 var (
-	Env    = loadConfig("./config.yml")
 	DB     = config.GetDB()
 	REDIS  = config.GetRedis()
 	MAIL   = config.GetMail()

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"airbox/global"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 	"time"
@@ -16,16 +15,16 @@ type Model struct {
 
 // 统计文件类型数量
 type Statistics struct {
-	Type  global.FileType
+	Type  int
 	Count int
 }
 
 type File struct {
 	Model
-	Name      string          `gorm:"type:varchar(100);index"` // 文件名
-	FolderID  *string         `gorm:"type:varchar(36);index"`  // 所在文件夹ID，当ID为nil时文件直属数据仓库下
-	StorageID string          `gorm:"type:varchar(36);index"`  // 所在数据仓库ID
-	Type      global.FileType `gorm:"index"`                   // 文件类型
+	Name      string  `gorm:"type:varchar(100);index"` // 文件名
+	FolderID  *string `gorm:"type:varchar(36);index"`  // 所在文件夹ID，当ID为nil时文件直属数据仓库下
+	StorageID string  `gorm:"type:varchar(36);index"`  // 所在数据仓库ID
+	Type      int     `gorm:"index"`                   // 文件类型
 
 	FileEntityID string `gorm:"type:varchar(36);index"`
 	FileEntity   FileEntity

@@ -1,6 +1,7 @@
 package disk
 
 import (
+	"airbox/config"
 	"airbox/global"
 	"airbox/utils"
 	"errors"
@@ -18,9 +19,9 @@ type Chunk struct {
 type Chunks []Chunk
 
 var (
-	partSize  = global.Env.Upload.PartSize * 1024
-	goroutine = global.Env.Upload.Goroutine
-	timeout   = int64(global.Env.Upload.Timeout)
+	partSize  = config.Env.Upload.PartSize * 1024
+	goroutine = config.Env.Upload.Goroutine
+	timeout   = int64(config.Env.Upload.Timeout)
 )
 
 func NewChunks(offset, size uint64, buffer []byte) Chunk {

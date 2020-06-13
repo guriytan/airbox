@@ -1,7 +1,6 @@
 package config
 
 import (
-	"airbox/global"
 	"airbox/model"
 	"fmt"
 	"github.com/jinzhu/gorm"
@@ -19,11 +18,11 @@ func GetDB() *gorm.DB {
 func InitializeDB() {
 	var err error
 	db, err = gorm.Open("mysql", fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=utf8mb4&loc=Local&parseTime=true",
-		global.Env.DataSource.Username,
-		global.Env.DataSource.Password,
-		global.Env.DataSource.Host,
-		global.Env.DataSource.Port,
-		global.Env.DataSource.Database))
+		Env.DataSource.Username,
+		Env.DataSource.Password,
+		Env.DataSource.Host,
+		Env.DataSource.Port,
+		Env.DataSource.Database))
 	if err != nil {
 		panic(fmt.Sprintf("DB 初始化失败: %v", err))
 	}
@@ -50,5 +49,8 @@ func createTables() {
 	}
 	if !db.HasTable(&model.File{}) {
 		db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4").CreateTable(&model.File{})
+	}
+	if !db.HasTable(&model.FileEntity{}) {
+		db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4").CreateTable(&model.FileEntity{})
 	}
 }

@@ -108,7 +108,7 @@ func (f *FileController) UploadFile(c echo.Context) error {
 		default:
 			// 查找是否存在md5相同的文件
 			fileByMD5, err := f.file.SelectFileByMD5(md5)
-			if err == gorm.ErrRecordNotFound || (err == nil && fileByMD5.Size != size) {
+			if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && fileByMD5.Size != size) {
 				// 调用service方法保存文件数据
 				fileByMD5, err = f.file.UploadFile(part, sid, md5, size)
 				if err != nil {

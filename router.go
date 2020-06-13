@@ -13,7 +13,7 @@ type Router struct {
 
 func (router *Router) PathMapping() *Router {
 	router.Use(middleware.Recover())
-	//router.Use(middleware.CORS())
+	router.Use(middleware.CORS())
 
 	// info组，负责一些显示的数据以及文件分享api
 	info := router.Group("/info", middleware2.Login)
@@ -29,8 +29,8 @@ func (router *Router) PathMapping() *Router {
 	auth.POST("/token", authController.LoginToken)                               // 获取登录token。form: user, password
 	auth.POST("/unsubscribe", authController.UnsubscribeCode, middleware2.Login) // 获取注销账号captcha。
 	auth.POST("/share", authController.ShareLink, middleware2.Login)             // 获取文件分享link。form: id（文件）
-	auth.POST("/register", authController.RegisterCode, middleware2.Login)       // 获取注册账号captcha。form: username, email
-	auth.POST("/password", authController.PasswordCode, middleware2.Login)       // 获取重置密码link。form: user
+	auth.POST("/register", authController.RegisterCode)                          // 获取注册账号captcha。form: username, email
+	auth.POST("/password", authController.PasswordCode)                          // 获取重置密码link。form: user
 	auth.POST("/email", authController.EmailCode, middleware2.Login)             // 获取重置邮箱captcha。form: email, password
 
 	// file组，负责文件相关操作的api

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"airbox/config"
 	"airbox/db"
 	"airbox/db/base"
 	"airbox/global"
@@ -70,7 +71,7 @@ func (f *FileService) SelectFileTypeCount(sid string) (types []model.Statistics,
 // UploadFile 保存文件信息，并更新数据仓库的容量大小
 func (f *FileService) UploadFile(part *multipart.Part, sid, md5 string, size uint64) (*model.FileEntity, error) {
 	// 计算文件实际存储路径
-	filepath := global.Env.Upload.Dir + "/" + sid + "/" + uuid.New().String() + "/"
+	filepath := config.Env.Upload.Dir + "/" + sid + "/" + uuid.New().String() + "/"
 	filename := part.FileName()
 	// 由于在上传文件夹模型下Filename()将有前置文件夹路径。因此统一剪切
 	filename = filename[strings.LastIndex(filename, "/")+1:]
@@ -231,7 +232,7 @@ func insertFile(entityDao base.FileEntityDao, fileDao base.FileDao, storageDao b
 	file := &model.File{
 		Name:       filename,
 		StorageID:  sid,
-		Type:       utils.GetFileType(strings.ToLower(path.Ext(filename))),
+		Type:       int(utils.GetFileType(strings.ToLower(path.Ext(filename)))),
 		FileEntity: *entity,
 	}
 	if fid != "" {

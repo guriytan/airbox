@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"airbox/config"
 	"airbox/global"
 	"airbox/service"
 	"airbox/utils"
@@ -36,7 +37,7 @@ func GetUserController() *UserController {
 // Register 验证用户名和密码长度以及邮箱格式， 验证邮箱验证码
 // 验证用户名是否可用，通过从缓存读取email的邮箱验证码间接验证邮箱是否可用
 func (u *UserController) Register(c echo.Context) error {
-	if !global.Env.Register {
+	if !config.Env.Register {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfForbidRegister)
 	}
 	email, code := c.FormValue("email"), c.FormValue("code")
