@@ -32,5 +32,5 @@ func main() {
 	}
 
 	router := NewRouter().PathMapping()
-	log.Fatal(router.Start(config.GetConfig().Web.Port))
+	log.Fatal(router.Run(config.GetConfig().Web.Port))
 }

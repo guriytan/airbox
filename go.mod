@@ -3,11 +3,12 @@ module airbox
 go 1.16
 
 require (
+	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/google/uuid v1.2.0
 	github.com/json-iterator/go v1.1.10
-	github.com/labstack/echo/v4 v4.2.1
+	github.com/minio/minio-go/v7 v7.0.10
 	github.com/onsi/ginkgo v1.15.1 // indirect
 	github.com/onsi/gomega v1.11.0 // indirect
 	github.com/pkg/errors v0.9.1

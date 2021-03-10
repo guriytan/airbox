@@ -9,7 +9,7 @@ import (
 	"airbox/utils"
 	"airbox/utils/encryption"
 
-	"github.com/labstack/echo/v4"
+	"github.com/gin-gonic/gin"
 )
 
 type InfoController struct {
@@ -32,16 +32,17 @@ func GetInfoController() *InfoController {
 }
 
 // ListFile 显示文件和文件夹列表
-func (info *InfoController) ListFile(c echo.Context) error {
-	ctx := c.Request().Context()
+func (info *InfoController) ListFile(c *gin.Context) {
+	ctx := c.Copy()
 
 	log := logger.GetLogger(ctx, "ListFile")
 	data := make(map[string]interface{})
-	if fid := c.QueryParam("fid"); fid != "" {
+	if fid := c.Query("fid"); fid != "" {
 		files, err := info.file.SelectFileByFatherID(ctx, fid)
 		if err != nil {
 			log.Infof("%+v\n", err)
-			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+			return
 		}
 		data["files"] = files
 	} else {
@@ -49,69 +50,77 @@ func (info *InfoController) ListFile(c echo.Context) error {
 		files, err := info.file.GetFileByStorageID(ctx, sid)
 		if err != nil {
 			log.Infof("%+v\n", err)
-			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+			return
 		}
 		data["files"] = files
 	}
-	return c.JSON(http.StatusOK, data)
+	c.JSON(http.StatusOK, data)
 }
 
 // UserInfo 显示用户及相关信息
-func (info *InfoController) UserInfo(c echo.Context) error {
-	ctx := c.Request().Context()
+func (info *InfoController) UserInfo(c *gin.Context) {
+	ctx := c.Copy()
 
 	log := logger.GetLogger(ctx, "UserInfo")
 	data := make(map[string]interface{})
 	user, err := info.user.GetUserByID(ctx, info.auth(c).ID)
 	if err != nil {
 		log.Infof("%+v\n", err)
-		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
 	}
 	count, err := info.file.SelectFileTypeCount(ctx, user.Storage.ID)
 	if err != nil {
 		log.Infof("%+v\n", err)
-		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
 	}
 	data["info"] = user
 	data["count"] = count
-	return c.JSON(http.StatusOK, data)
+	c.JSON(http.StatusOK, data)
 }
 
 // ListType 显示对应类型的文件
-func (info *InfoController) ListType(c echo.Context) error {
-	ctx := c.Request().Context()
+func (info *InfoController) ListType(c *gin.Context) {
+	ctx := c.Copy()
 
 	log := logger.GetLogger(ctx, "ListType")
-	files, err := info.file.GetFileByType(ctx, c.QueryParam("type"))
+	files, err := info.file.GetFileByType(ctx, c.Query("type"))
 	if err != nil {
 		log.Infof("%+v\n", err)
-		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	c.JSON(http.StatusOK, map[string]interface{}{
 		"files": files,
 	})
 }
 
 // ShareFile 分享文件
-func (info *InfoController) ShareFile(c echo.Context) error {
-	ctx := c.Request().Context()
+func (info *InfoController) ShareFile(c *gin.Context) {
+	ctx := c.Copy()
 
 	log := logger.GetLogger(ctx, "ShareFile")
-	token := c.FormValue("link")
+	token := c.PostForm("link")
 	if token == "" {
-		return c.JSON(http.StatusForbidden, global.ErrorWithoutToken)
+		c.JSON(http.StatusForbidden, global.ErrorWithoutToken)
+		return
 	}
 	fileID, exp, err := encryption.ParseShareToken(token)
 	if err != nil {
 		log.Infof("%+v\n", err)
-		return c.JSON(http.StatusForbidden, global.ErrorOfWrongToken)
+		c.JSON(http.StatusForbidden, global.ErrorOfWrongToken)
+		return
 	} else if exp < utils.Epoch() {
-		return c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
+		c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
+		return
 	}
 	fileByID, err := info.file.GetFileByID(ctx, fileID)
 	if err != nil {
 		log.Infof("%+v\n", err)
-		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
 	}
-	return info.downloadFile(c, fileByID)
+	info.downloadFile(c, fileByID)
 }

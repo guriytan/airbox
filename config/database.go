@@ -18,7 +18,7 @@ func GetDB() *gorm.DB {
 	return db
 }
 
-// 初始化数据库
+// InitializeDB 初始化数据库
 func InitializeDB() error {
 	var err error
 	db, err = gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=utf8mb4&loc=Local&parseTime=true",
@@ -53,7 +53,7 @@ func InitializeDB() error {
 	return nil
 }
 
-// 初始化数据表
+// createTables 初始化数据表
 func createTables() error {
 	migrator := db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4").Migrator()
 	if !migrator.HasTable(&model.User{}) {

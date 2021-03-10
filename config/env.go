@@ -59,7 +59,7 @@ type Config struct {
 	Register bool `yaml:"register"` // 注册权限
 }
 
-// 加载配置文件
+// LoadConfig 加载配置文件
 func LoadConfig() error {
 	cfg = &Config{}
 	if err := yaml.Unmarshal(config, cfg); err != nil {

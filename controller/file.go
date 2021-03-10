@@ -9,7 +9,7 @@ import (
 	"airbox/logger"
 	"airbox/service"
 
-	"github.com/labstack/echo/v4"
+	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
@@ -34,22 +34,24 @@ func GetFileController() *FileController {
 }
 
 // UploadFile 文件上传
-func (f *FileController) UploadFile(c echo.Context) error {
-	ctx := c.Request().Context()
+func (f *FileController) UploadFile(c *gin.Context) {
+	ctx := c.Copy()
 
 	log := logger.GetLogger(ctx, "UploadFile")
 	data := make(map[string]interface{})
-	reader, err := c.Request().MultipartReader()
+	reader, err := c.Request.MultipartReader()
 	if err != nil {
 		log.Infof("%+v\n", err)
-		return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+		return
 	}
 	user, err := f.user.GetUserByID(ctx, f.auth(c).ID)
 	if err != nil {
 		log.Infof("%+v\n", err)
-		return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+		return
 	}
-	size, hash, sid, fid := uint64(0), "", user.Storage.ID, c.QueryParams().Get("fid")
+	size, hash, sid, fid := uint64(0), "", user.Storage.ID, c.Query("fid")
 	// 判断fid对应的文件夹是否存在
 	for {
 		// 获得Reader流
@@ -59,7 +61,8 @@ func (f *FileController) UploadFile(c echo.Context) error {
 			break
 		} else if err != nil {
 			log.Infof("%+v\n", err)
-			return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+			c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+			return
 		}
 		switch part.FormName() {
 		case "size":
@@ -68,18 +71,21 @@ func (f *FileController) UploadFile(c echo.Context) error {
 			if err != nil {
 				_ = part.Close()
 				log.Infof("%+v\n", err)
-				return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+				c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+				return
 			}
 			size, err = strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				_ = part.Close()
 				log.Infof("%+v\n", err)
-				return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+				c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+				return
 			}
 			// 判断仓库的剩余容量是否足以存放该文件
 			if user.Storage.CurrentSize+size >= user.Storage.MaxSize {
 				_ = part.Close()
-				return c.JSON(http.StatusBadRequest, global.ErrorOutOfSpace)
+				c.JSON(http.StatusBadRequest, global.ErrorOutOfSpace)
+				return
 			}
 		case "hash":
 			// 读取文件的MD5
@@ -87,7 +93,8 @@ func (f *FileController) UploadFile(c echo.Context) error {
 			if err != nil {
 				_ = part.Close()
 				log.Infof("%+v\n", err)
-				return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+				c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+				return
 			}
 		case "folder":
 			// 若文件存在前置文件夹，则需要调用folder service进行对文件夹进行分割
@@ -101,47 +108,51 @@ func (f *FileController) UploadFile(c echo.Context) error {
 				if err != nil {
 					_ = part.Close()
 					log.Infof("%+v\n", err)
-					return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+					c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+					return
 				}
 			} else if err != nil {
 				log.Infof("%+v\n", err)
-				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+				c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+				return
 			}
 			file, err := f.file.StoreFile(ctx, fileByHash, sid, fid)
 			if err != nil {
 				_ = part.Close()
 				log.Infof("%+v\n", err)
-				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+				c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+				return
 			}
 			data["file"] = file
 		}
 		_ = part.Close()
 	}
-	return c.JSON(http.StatusOK, data)
+	c.JSON(http.StatusOK, data)
 }
 
 // DownloadFile 文件下载
-func (f *FileController) DownloadFile(c echo.Context) error {
-	ctx := c.Request().Context()
+func (f *FileController) DownloadFile(c *gin.Context) {
+	ctx := c.Copy()
 
 	log := logger.GetLogger(ctx, "DownloadFile")
 	// 获取所要下载的文件信息
 	fileByID, err := info.file.GetFileByID(ctx, c.Param("id"))
 	if err != nil {
 		log.Infof("%+v\n", err)
-		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
 	}
-	return f.downloadFile(c, fileByID)
+	f.downloadFile(ctx, fileByID)
 }
 
 // DeleteFile 删除文件
-func (f *FileController) DeleteFile(c echo.Context) error {
-	return f.Delete(c, f.file.DeleteFile)
+func (f *FileController) DeleteFile(c *gin.Context) {
+	f.Delete(c, f.file.DeleteFile)
 }
 
 // UpdateFile 更新文件信息，包括重命名、移动和复制
-func (f *FileController) UpdateFile(c echo.Context) error {
-	return f.Update(c, f.file.RenameFile, f.file.CopyFile, f.file.MoveFile)
+func (f *FileController) UpdateFile(c *gin.Context) {
+	f.Update(c, f.file.RenameFile, f.file.CopyFile, f.file.MoveFile)
 }
 
 func readString(r io.Reader) (string, error) {
