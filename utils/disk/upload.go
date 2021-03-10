@@ -1,12 +1,13 @@
 package disk
 
 import (
-	"airbox/config"
-	"airbox/global"
-	"airbox/utils"
 	"errors"
 	"io"
 	"os"
+
+	"airbox/config"
+	"airbox/global"
+	"airbox/utils"
 )
 
 // Chunk is the file chunk definition
@@ -19,9 +20,9 @@ type Chunk struct {
 type Chunks []Chunk
 
 var (
-	partSize  = config.Env.Upload.PartSize * 1024
-	goroutine = config.Env.Upload.Goroutine
-	timeout   = int64(config.Env.Upload.Timeout)
+	partSize  = config.GetConfig().Upload.PartSize * 1024
+	goroutine = config.GetConfig().Upload.Goroutine
+	timeout   = int64(config.GetConfig().Upload.Timeout)
 )
 
 func NewChunks(offset, size uint64, buffer []byte) Chunk {

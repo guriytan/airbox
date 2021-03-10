@@ -2,9 +2,10 @@ package utils
 
 import (
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -26,8 +27,8 @@ func CheckEmailFormat(email string) bool {
 	return reg.MatchString(email)
 }
 
-// AddIndexToFilename used to rename the file if the file is exist
-func AddIndexToFilename(file string, index int) string {
+// AddSuffixToFilename used to rename the file if the file is exist
+func AddSuffixToFilename(file string) string {
 	split := strings.LastIndex(file, ".")
-	return file[:split] + "(" + strconv.FormatInt(int64(index), 10) + ")" + file[split:]
+	return file[:split] + "-" + uuid.New().URN() + file[split:]
 }

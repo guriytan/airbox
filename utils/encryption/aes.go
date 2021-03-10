@@ -1,13 +1,14 @@
 package encryption
 
 import (
-	"airbox/global"
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
 	"strconv"
 	"strings"
+
+	"airbox/global"
 )
 
 // aesEncryption 为使用AES方法的加密方法

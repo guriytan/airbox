@@ -1,27 +1,31 @@
 package global
 
 import (
-	"airbox/config"
 	"os"
 	"time"
 )
 
-var (
-	DB     = config.GetDB()
-	REDIS  = config.GetRedis()
-	MAIL   = config.GetMail()
-	LOGGER = config.GetLogger()
+const (
+	KeyRequestID = "request_id"
+	KeyFunction  = "function"
+	KeyUserID    = "user_id"
+	KeyIP        = "ip"
 )
 
 // 文件类型
 type FileType int
 
 const (
-	FileMusicType = iota
+	FileFolderType = iota
+	FileMusicType
 	FileVideoType
 	FileDocumentType
 	FilePictureType
 	FileOtherType
+)
+
+const (
+	DefaultFatherID = "air_box_default_father_id"
 )
 
 // 用户名及密码长度限制

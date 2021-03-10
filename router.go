@@ -3,6 +3,7 @@ package main
 import (
 	"airbox/controller"
 	middleware2 "airbox/middleware"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -14,6 +15,7 @@ type Router struct {
 func (router *Router) PathMapping() *Router {
 	router.Use(middleware.Recover())
 	router.Use(middleware.CORS())
+	router.Use(middleware2.InjectContext)
 
 	// info组，负责一些显示的数据以及文件分享api
 	info := router.Group("/info", middleware2.Login)
@@ -40,14 +42,6 @@ func (router *Router) PathMapping() *Router {
 	file.GET("/:id", fileController.DownloadFile)   // 下载文件
 	file.DELETE("/:id", fileController.DeleteFile)  // 删除文件
 	file.PUT("/:id", fileController.UpdateFile)     // 修改文件（包括重命名、移动、复制）。form: name / fid, copy
-
-	// folder组，负责文件夹相关操作的api
-	folder := router.Group("/folder", middleware2.Login)
-	folderController := controller.GetFolderController()
-	folder.GET("/get", folderController.GetFolder)       // 获取fid下的文件夹列表。query: fid
-	folder.POST("/new", folderController.AddFolder)      // 新建文件夹。form: name, fid
-	folder.DELETE("/:id", folderController.DeleteFolder) // 删除文件夹
-	folder.PUT("/:id", folderController.UpdateFolder)    // 修改文件夹（包括重命名、移动、复制）。form: name / fid, copy
 
 	// user组，负责账号的一些操作api
 	user := router.Group("/user")

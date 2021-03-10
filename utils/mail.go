@@ -2,7 +2,6 @@ package utils
 
 import (
 	"airbox/config"
-	"airbox/global"
 
 	"gopkg.in/gomail.v2"
 )
@@ -10,7 +9,7 @@ import (
 // SendCaptcha send the captcha used to register and reset something
 func SendCaptcha(email, captcha string) error {
 	m := gomail.NewMessage()
-	m.SetHeader("From", config.Env.Mail.Username)
+	m.SetHeader("From", config.GetConfig().Mail.Username)
 	m.SetHeader("To", email)
 	m.SetHeader("Subject", "来自AirBox的邮件提醒！")
 	body := "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n" +
@@ -51,13 +50,13 @@ func SendCaptcha(email, captcha string) error {
 		"</body>\n" +
 		"</html>"
 	m.SetBody("text/html", body)
-	return global.MAIL.DialAndSend(m)
+	return config.GetMail().DialAndSend(m)
 }
 
 // SendResetLink send the link used to reset password
 func SendResetLink(email, link string) error {
 	m := gomail.NewMessage()
-	m.SetHeader("From", config.Env.Mail.Username)
+	m.SetHeader("From", config.GetConfig().Mail.Username)
 	m.SetHeader("To", email)
 	m.SetHeader("Subject", "来自AirBox的重置密码申请！")
 	content := "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n" +
@@ -100,5 +99,5 @@ func SendResetLink(email, link string) error {
 		"</body>\n" +
 		"</html>"
 	m.SetBody("text/html", content)
-	return global.MAIL.DialAndSend(m)
+	return config.GetMail().DialAndSend(m)
 }

@@ -1,10 +1,11 @@
 package disk
 
 import (
-	"airbox/model"
 	"archive/zip"
 	"io"
 	"os"
+
+	"airbox/model"
 )
 
 // Compress 压缩多文件

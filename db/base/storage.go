@@ -1,19 +1,22 @@
 package base
 
 import (
+	"context"
+
 	"airbox/model"
-	"github.com/jinzhu/gorm"
+
+	"gorm.io/gorm"
 )
 
 // 数据仓库数据库操作接口
 type StorageDao interface {
-	InsertStorage(db *gorm.DB, storage *model.Storage) error
+	InsertStorage(ctx context.Context, tx *gorm.DB, storage *model.Storage) error
 
-	DeleteStorageByID(db *gorm.DB, id string) error
+	DeleteStorageByID(ctx context.Context, tx *gorm.DB, id string) error
 
-	UpdateStorage(db *gorm.DB, storage *model.Storage) error
-	UpdateCurrentSize(db *gorm.DB, id string, size int64) error
-	UpdateMaxSize(db *gorm.DB, id string, size int64) error
+	UpdateStorage(ctx context.Context, storage *model.Storage) error
+	UpdateCurrentSize(ctx context.Context, tx *gorm.DB, id string, size int64) error
+	UpdateMaxSize(ctx context.Context, id string, size int64) error
 
-	SelectStorageByUserID(db *gorm.DB, id string) (*model.Storage, error)
+	SelectStorageByUserID(ctx context.Context, id string) (*model.Storage, error)
 }

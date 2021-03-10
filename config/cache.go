@@ -2,27 +2,28 @@ package config
 
 import (
 	"fmt"
-	"github.com/go-redis/redis"
 	"time"
+
+	"github.com/go-redis/redis"
 )
 
 var redisCache *redis.Client
 
-// InitializeRedis 用于Redis初始化
-func InitializeRedis() {
+// InitializeCache 用于Redis初始化
+func InitializeCache() error {
 	redisCache = redis.NewClient(&redis.Options{
-		Addr:         fmt.Sprintf("%s:%s", Env.Redis.Host, Env.Redis.Port),
-		Password:     Env.Redis.Password,
-		MinIdleConns: Env.Redis.MinIdle,
-		PoolSize:     Env.Redis.Pool,
-		IdleTimeout:  time.Duration(Env.Redis.Timeout),
+		Addr:         fmt.Sprintf("%s:%s", GetConfig().Redis.Host, GetConfig().Redis.Port),
+		Password:     GetConfig().Redis.Password,
+		MinIdleConns: GetConfig().Redis.MinIdle,
+		PoolSize:     GetConfig().Redis.Pool,
+		IdleTimeout:  time.Duration(GetConfig().Redis.Timeout),
 	})
-	err := redisCache.Ping().Err()
-	if err != nil {
-		panic(fmt.Sprintf("redis 初始化失败: %v", err))
+	if err := redisCache.Ping().Err(); err != nil {
+		return fmt.Errorf("redis 初始化失败: %v", err)
 	}
+	return nil
 }
 
-func GetRedis() *redis.Client {
+func GetCache() *redis.Client {
 	return redisCache
 }

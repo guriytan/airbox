@@ -1,14 +1,14 @@
 package controller
 
 import (
+	"net/http"
+
 	"airbox/config"
 	"airbox/global"
+	"airbox/logger"
 	"airbox/service"
 	"airbox/utils"
 	"airbox/utils/encryption"
-	"github.com/pkg/errors"
-
-	"net/http"
 
 	"github.com/labstack/echo/v4"
 )
@@ -37,12 +37,15 @@ func GetUserController() *UserController {
 // Register 验证用户名和密码长度以及邮箱格式， 验证邮箱验证码
 // 验证用户名是否可用，通过从缓存读取email的邮箱验证码间接验证邮箱是否可用
 func (u *UserController) Register(c echo.Context) error {
-	if !config.Env.Register {
+	ctx := c.Request().Context()
+
+	log := logger.GetLogger(ctx, "Register")
+	if !config.GetConfig().Register {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfForbidRegister)
 	}
 	email, code := c.FormValue("email"), c.FormValue("code")
 	// 从缓存中使用邮箱作为key获取邮箱验证码与表单的邮箱验证码比对
-	if !u.verify.VerifyEmailCaptcha(email, code) {
+	if !u.verify.VerifyEmailCaptcha(ctx, email, code) {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfCaptcha)
 	}
 	password, username := c.FormValue("password"), c.FormValue("username")
@@ -55,14 +58,14 @@ func (u *UserController) Register(c echo.Context) error {
 	if !utils.CheckEmailFormat(email) {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
 	}
-	if _, res := u.user.GetUserByUsername(username); !res {
+	if _, res := u.user.GetUserByUsername(ctx, username); !res {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfExistUsername)
 	}
-	if err := u.user.Registry(username, password, email); err != nil {
-		global.LOGGER.Printf("%+v\n", err)
+	if err := u.user.Registry(ctx, username, password, email); err != nil {
+		log.Infof("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
-	u.verify.DeleteCaptcha(email)
+	u.verify.DeleteCaptcha(ctx, email)
 	return c.NoContent(http.StatusOK)
 }
 
@@ -70,18 +73,21 @@ func (u *UserController) Register(c echo.Context) error {
 // 解析链接中的token，判断邮箱是否存在
 // 验证密码长度，验证原密码和新密码是否一样
 func (u *UserController) ResetPwd(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	log := logger.GetLogger(ctx, "ResetPwd")
 	password := c.FormValue("password")
 	if len(password) < global.UserMinLength || len(password) > global.UserMaxLength {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
 	}
 	id := c.Get("id").(string)
-	if user, err := u.user.GetUserByID(id); err != nil {
+	if user, err := u.user.GetUserByID(ctx, id); err != nil {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfExpectedLink)
 	} else if user.Password == encryption.EncryptPassword(password) {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 	}
-	if err := u.user.ResetPwd(id, password); err != nil {
-		global.LOGGER.Printf("%+v\n", err)
+	if err := u.user.ResetPwd(ctx, id, password); err != nil {
+		log.Infof("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.NoContent(http.StatusOK)
@@ -90,6 +96,9 @@ func (u *UserController) ResetPwd(c echo.Context) error {
 // ResetPwdByOrigin 用户信息界面的重置密码
 // 验证原密码和新密码长度，验证原密码和新密码是否一样，验证原密码是否真实密码
 func (u *UserController) ResetPwdByOrigin(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
 	user := u.auth(c)
 	origin, password := c.FormValue("origin"), c.FormValue("password")
 	if user.Password != encryption.EncryptPassword(origin) {
@@ -97,8 +106,8 @@ func (u *UserController) ResetPwdByOrigin(c echo.Context) error {
 	} else if origin == password {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 	}
-	if err := u.user.ResetPwd(user.ID, password); err != nil {
-		global.LOGGER.Printf("%+v\n", err)
+	if err := u.user.ResetPwd(ctx, user.ID, password); err != nil {
+		log.Infof("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.NoContent(http.StatusOK)
@@ -107,28 +116,31 @@ func (u *UserController) ResetPwdByOrigin(c echo.Context) error {
 // ResetEmail 重置邮箱
 // 验证邮箱格式以及和原邮箱是否一样，验证邮箱验证码
 func (u *UserController) ResetEmail(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
 	user, email, code := u.auth(c), c.FormValue("email"), c.FormValue("code")
 	// 将email作为key从缓存中提取验证码比对
-	if !u.verify.VerifyEmailCaptcha(email, code) {
+	if !u.verify.VerifyEmailCaptcha(ctx, email, code) {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfCaptcha)
 	}
 	if !utils.CheckEmailFormat(email) {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
-	} else if _, res := u.user.GetUserByEmail(email); !res {
+	} else if _, res := u.user.GetUserByEmail(ctx, email); !res {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfExistEmail)
-	} else if err := u.user.ResetEmail(user.ID, email); err != nil {
-		global.LOGGER.Printf("%+v\n", err)
+	} else if err := u.user.ResetEmail(ctx, user.ID, email); err != nil {
+		log.Infof("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	} else {
-		u.verify.DeleteCaptcha(email)
+		u.verify.DeleteCaptcha(ctx, email)
 		user.Email = email
 		token, e := encryption.GenerateUserToken(user)
 		if e != nil {
-			global.LOGGER.Printf("%+v\n", errors.WithStack(e))
+			log.Infof("%+v\n", err)
 			return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		}
-		if err = u.verify.SetToken(user.Name, token); err != nil {
-			global.LOGGER.Printf("%+v\n", err)
+		if err = u.verify.SetToken(ctx, user.Name, token); err != nil {
+			log.Infof("%+v\n", err)
 		}
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"token": token,
@@ -138,14 +150,17 @@ func (u *UserController) ResetEmail(c echo.Context) error {
 
 // Unsubscribe 注销账户
 func (u *UserController) Unsubscribe(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
 	user := u.auth(c)
 	// 将email作为key从缓存中提取验证码比对
-	if code := c.QueryParam("code"); !u.verify.VerifyEmailCaptcha(user.Email, code) {
+	if code := c.QueryParam("code"); !u.verify.VerifyEmailCaptcha(ctx, user.Email, code) {
 		return c.JSON(http.StatusBadRequest, global.ErrorOfCaptcha)
 	}
 	// 从数据库中删除相关信息并从磁盘删除文件
-	if err := u.user.UnsubscribeUser(user.ID, user.Storage.ID); err != nil {
-		global.LOGGER.Printf("%+v\n", err)
+	if err := u.user.UnsubscribeUser(ctx, user.ID, user.Storage.ID); err != nil {
+		log.Infof("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return c.NoContent(http.StatusOK)

@@ -1,21 +1,23 @@
 package controller
 
 import (
-	"airbox/global"
-	"airbox/service"
-	"github.com/jinzhu/gorm"
-	"github.com/labstack/echo/v4"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strconv"
+
+	"airbox/global"
+	"airbox/logger"
+	"airbox/service"
+
+	"github.com/labstack/echo/v4"
+	"github.com/pkg/errors"
+	"gorm.io/gorm"
 )
 
 type FileController struct {
 	BaseController
-	file   *service.FileService
-	folder *service.FolderService
-	user   *service.UserService
+	file *service.FileService
+	user *service.UserService
 }
 
 var file *FileController
@@ -25,7 +27,6 @@ func GetFileController() *FileController {
 		file = &FileController{
 			BaseController: getBaseController(),
 			file:           service.GetFileService(),
-			folder:         service.GetFolderService(),
 			user:           service.GetUserService(),
 		}
 	}
@@ -34,25 +35,22 @@ func GetFileController() *FileController {
 
 // UploadFile 文件上传
 func (f *FileController) UploadFile(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	log := logger.GetLogger(ctx, "UploadFile")
 	data := make(map[string]interface{})
 	reader, err := c.Request().MultipartReader()
 	if err != nil {
-		global.LOGGER.Printf("%+v\n", err)
+		log.Infof("%+v\n", err)
 		return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 	}
-	user, err := f.user.GetUserByID(f.auth(c).ID)
+	user, err := f.user.GetUserByID(ctx, f.auth(c).ID)
 	if err != nil {
-		global.LOGGER.Printf("%+v\n", err)
+		log.Infof("%+v\n", err)
 		return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 	}
-	size, md5, sid, fid := uint64(0), "", user.Storage.ID, c.QueryParams().Get("fid")
+	size, hash, sid, fid := uint64(0), "", user.Storage.ID, c.QueryParams().Get("fid")
 	// 判断fid对应的文件夹是否存在
-	if fid != "" {
-		if _, err := f.folder.GetFolderByID(fid); err != nil {
-			global.LOGGER.Printf("%+v\n", err)
-			return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
-		}
-	}
 	for {
 		// 获得Reader流
 		part, err := reader.NextPart()
@@ -60,7 +58,7 @@ func (f *FileController) UploadFile(c echo.Context) error {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			global.LOGGER.Printf("%+v\n", err)
+			log.Infof("%+v\n", err)
 			return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 		}
 		switch part.FormName() {
@@ -69,13 +67,13 @@ func (f *FileController) UploadFile(c echo.Context) error {
 			s, err := readString(part)
 			if err != nil {
 				_ = part.Close()
-				global.LOGGER.Printf("%+v\n", err)
+				log.Infof("%+v\n", err)
 				return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 			}
 			size, err = strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				_ = part.Close()
-				global.LOGGER.Printf("%+v\n", err)
+				log.Infof("%+v\n", err)
 				return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 			}
 			// 判断仓库的剩余容量是否足以存放该文件
@@ -83,47 +81,36 @@ func (f *FileController) UploadFile(c echo.Context) error {
 				_ = part.Close()
 				return c.JSON(http.StatusBadRequest, global.ErrorOutOfSpace)
 			}
-		case "md5":
+		case "hash":
 			// 读取文件的MD5
-			md5, err = readString(part)
+			hash, err = readString(part)
 			if err != nil {
 				_ = part.Close()
-				global.LOGGER.Printf("%+v\n", err)
+				log.Infof("%+v\n", err)
 				return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 			}
 		case "folder":
 			// 若文件存在前置文件夹，则需要调用folder service进行对文件夹进行分割
 			// 并在数据库中创建每一层文件夹，最终返回最终层文件夹fid
-			filepath, err := readString(part)
-			if err != nil {
-				_ = part.Close()
-				global.LOGGER.Printf("%+v\n", err)
-				return c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
-			}
-			if fid, err = f.folder.CreateFolder(filepath, sid, fid); err != nil {
-				_ = part.Close()
-				global.LOGGER.Printf("%+v\n", err)
-				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-			}
 		default:
 			// 查找是否存在md5相同的文件
-			fileByMD5, err := f.file.SelectFileByMD5(md5)
-			if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && fileByMD5.Size != size) {
+			fileByHash, err := f.file.SelectFileByHash(ctx, hash)
+			if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && fileByHash.Size != size) {
 				// 调用service方法保存文件数据
-				fileByMD5, err = f.file.UploadFile(part, sid, md5, size)
+				fileByHash, err = f.file.UploadFile(ctx, part, sid, hash, size)
 				if err != nil {
 					_ = part.Close()
-					global.LOGGER.Printf("%+v\n", err)
+					log.Infof("%+v\n", err)
 					return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 				}
 			} else if err != nil {
-				global.LOGGER.Printf("%+v\n", err)
+				log.Infof("%+v\n", err)
 				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			}
-			file, err := f.file.StoreFile(fileByMD5, sid, fid)
+			file, err := f.file.StoreFile(ctx, fileByHash, sid, fid)
 			if err != nil {
 				_ = part.Close()
-				global.LOGGER.Printf("%+v\n", err)
+				log.Infof("%+v\n", err)
 				return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			}
 			data["file"] = file
@@ -135,10 +122,13 @@ func (f *FileController) UploadFile(c echo.Context) error {
 
 // DownloadFile 文件下载
 func (f *FileController) DownloadFile(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	log := logger.GetLogger(ctx, "DownloadFile")
 	// 获取所要下载的文件信息
-	fileByID, err := info.file.GetFileByID(c.Param("id"))
+	fileByID, err := info.file.GetFileByID(ctx, c.Param("id"))
 	if err != nil {
-		global.LOGGER.Printf("%+v\n", err)
+		log.Infof("%+v\n", err)
 		return c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	}
 	return f.downloadFile(c, fileByID)
@@ -158,7 +148,7 @@ func readString(r io.Reader) (string, error) {
 	buf := make([]byte, 1024)
 	n, err := io.ReadFull(r, buf)
 	if err != nil && err != io.ErrUnexpectedEOF {
-		return "", errors.WithStack(err)
+		return "", err
 	}
 	return string(buf[:n]), nil
 }

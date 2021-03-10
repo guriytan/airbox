@@ -1,13 +1,23 @@
 package config
 
 import (
+	_ "embed"
+	"fmt"
+
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"log"
 )
 
+// go:embed config.yml
+var config []byte
+
+var cfg *Config
+
+func GetConfig() *Config {
+	return cfg
+}
+
 // Config 环境配置对象
-type Environment struct {
+type Config struct {
 	// 邮箱服务配置
 	Mail struct {
 		Addr     string `yaml:"addr"`     // 邮箱地址
@@ -50,25 +60,10 @@ type Environment struct {
 }
 
 // 加载配置文件
-func loadConfig(path string) *Environment {
-	env := &Environment{}
-	buffer, err := ioutil.ReadFile(path)
-	if err != nil {
-		log.Fatalf("start service of reading %s error: %s", path, err.Error())
+func LoadConfig() error {
+	cfg = &Config{}
+	if err := yaml.Unmarshal(config, cfg); err != nil {
+		return fmt.Errorf("config 初始化失败: %v", err)
 	}
-	err = yaml.Unmarshal(buffer, env)
-	if err != nil {
-		log.Fatalf("start service of creating Config error: %s", err.Error())
-	}
-	return env
-}
-
-var Env *Environment
-
-func init() {
-	Env = loadConfig("./config.yml")
-	InitializeLogger()
-	InitializeRedis()
-	InitializeDB()
-	InitializeMail()
+	return nil
 }

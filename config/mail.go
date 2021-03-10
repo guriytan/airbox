@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/tls"
+
 	"gopkg.in/gomail.v2"
 )
 
@@ -12,7 +13,8 @@ func GetMail() *gomail.Dialer {
 }
 
 // InitializeMail 用于邮箱初始化
-func InitializeMail() {
-	mail = gomail.NewDialer(Env.Mail.Addr, Env.Mail.Port, Env.Mail.Username, Env.Mail.Password)
+func InitializeMail() error {
+	mail = gomail.NewDialer(GetConfig().Mail.Addr, GetConfig().Mail.Port, GetConfig().Mail.Username, GetConfig().Mail.Password)
 	mail.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	return nil
 }

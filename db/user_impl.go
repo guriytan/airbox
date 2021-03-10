@@ -1,64 +1,78 @@
 package db
 
 import (
+	"context"
+	"sync"
+
 	"airbox/db/base"
 	"airbox/model"
-	"github.com/jinzhu/gorm"
+
+	"gorm.io/gorm"
 )
 
 // 用户数据库操作实体
 type UserDaoImpl struct {
+	db *gorm.DB
 }
 
 // InsertUser 新增用户
-func (u *UserDaoImpl) InsertUser(db *gorm.DB, user *model.User) error {
-	return db.Create(user).Error
+func (u *UserDaoImpl) InsertUser(ctx context.Context, tx *gorm.DB, user *model.User) error {
+	if tx == nil {
+		tx = u.db.WithContext(ctx)
+	}
+	return tx.Create(user).Error
 }
 
 // DeleteUserByID 根据用户ID删除用户
-func (u *UserDaoImpl) DeleteUserByID(db *gorm.DB, id string) error {
-	return db.Where("id = ?", id).Delete(&model.User{}).Error
+func (u *UserDaoImpl) DeleteUserByID(ctx context.Context, tx *gorm.DB, id string) error {
+	if tx == nil {
+		tx = u.db.WithContext(ctx)
+	}
+	return tx.Delete(&model.User{}, "id = ?", id).Error
 }
 
 // UpdateUser 更新用户信息
-func (u *UserDaoImpl) UpdateUser(db *gorm.DB, user *model.User) error {
-	return db.Model(user).Updates(user).Error
+func (u *UserDaoImpl) UpdateUser(ctx context.Context, user *model.User) error {
+	return u.db.WithContext(ctx).Model(&model.User{}).Updates(user).Error
 }
 
 // SelectUserByID 根据用户ID获得用户
-func (u *UserDaoImpl) SelectUserByID(db *gorm.DB, id string) (*model.User, error) {
+func (u *UserDaoImpl) SelectUserByID(ctx context.Context, id string) (*model.User, error) {
 	user := &model.User{}
-	err := db.Preload("Storage").Where("id = ?", id).First(user).Error
+	err := u.db.WithContext(ctx).Preload("Storage").Where("id = ?", id).Find(user).Error
 	return user, err
 }
 
 // SelectUserByPwdAndNameOrEmail 根据用户名或邮箱以及密码获得用户
-func (u *UserDaoImpl) SelectUserByPwdAndNameOrEmail(db *gorm.DB, name, pwd string) (*model.User, error) {
+func (u *UserDaoImpl) SelectUserByPwdAndNameOrEmail(ctx context.Context, name, pwd string) (*model.User, error) {
 	user := &model.User{}
-	sql := db.Preload("Storage")
-	err := sql.Where("password = ? and (name = ? or email = ?)", pwd, name, name).First(user).Error
+	sql := u.db.WithContext(ctx).Preload("Storage")
+	err := sql.Where("password = ? and (name = ? or email = ?)", pwd, name, name).Order("id").Limit(1).Find(user).Error
 	return user, err
 }
 
 // SelectUserByName 根据用户名获得用户
-func (u *UserDaoImpl) SelectUserByName(db *gorm.DB, username string) (*model.User, error) {
+func (u *UserDaoImpl) SelectUserByName(ctx context.Context, username string) (*model.User, error) {
 	user := &model.User{}
-	res := db.Where("name = ?", username).First(user).Error
+	res := u.db.WithContext(ctx).Find(user, "name = ?", username).Error
 	return user, res
 }
 
 // SelectUserByEmail 根据邮箱获得用户
-func (u *UserDaoImpl) SelectUserByEmail(db *gorm.DB, email string) (*model.User, error) {
+func (u *UserDaoImpl) SelectUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	user := &model.User{}
-	res := db.Where("email = ?", email).First(user).Error
+	res := u.db.WithContext(ctx).Find(user, "email = ?", email).Error
 	return user, res
 }
 
-var user base.UserDao
+var (
+	userDao     base.UserDao
+	userDaoOnce sync.Once
+)
 
-func GetUserDao() base.UserDao {
-	if user == nil {
-		user = &UserDaoImpl{}
-	}
-	return user
+func GetUserDao(db *gorm.DB) base.UserDao {
+	userDaoOnce.Do(func() {
+		userDao = &UserDaoImpl{db: db}
+	})
+	return userDao
 }
