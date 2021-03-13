@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"airbox/model"
+	"airbox/model/do"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -56,23 +56,23 @@ func InitializeDB() error {
 // createTables 初始化数据表
 func createTables() error {
 	migrator := db.Set("gorm:table_options", "ENGINE=InnoDB DEFAULT CHARSET=UTF8MB4").Migrator()
-	if !migrator.HasTable(&model.User{}) {
-		if err := migrator.CreateTable(&model.User{}); err != nil {
+	if !migrator.HasTable(&do.User{}) {
+		if err := migrator.CreateTable(&do.User{}); err != nil {
 			return err
 		}
 	}
-	if !migrator.HasTable(&model.Storage{}) {
-		if err := migrator.CreateTable(&model.Storage{}); err != nil {
+	if !migrator.HasTable(&do.Storage{}) {
+		if err := migrator.CreateTable(&do.Storage{}); err != nil {
 			return err
 		}
 	}
-	if !migrator.HasTable(&model.File{}) {
-		if err := migrator.CreateTable(&model.File{}); err != nil {
+	if !migrator.HasTable(&do.File{}) {
+		if err := migrator.CreateTable(&do.File{}); err != nil {
 			return err
 		}
 	}
-	if !migrator.HasTable(&model.FileInfo{}) {
-		if err := migrator.CreateTable(&model.FileInfo{}); err != nil {
+	if !migrator.HasTable(&do.FileInfo{}) {
+		if err := migrator.CreateTable(&do.FileInfo{}); err != nil {
 			return err
 		}
 	}

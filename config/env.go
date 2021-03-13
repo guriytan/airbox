@@ -45,11 +45,10 @@ type Config struct {
 		MinIdle  int    `yaml:"min-idle"` // Redis连接池最小维持数量
 		Timeout  int    `yaml:"timeout"`  // Redis连接超时时间
 	}
-	Upload struct {
-		Goroutine int    `yaml:"goroutine"` // Default routine, 2
-		Timeout   int    `yaml:"timeout"`   // Timeout for transmission, second
-		Dir       string `yaml:"dir"`       // Default Store Path, don't end with "/"
-		PartSize  int    `yaml:"part-size"` // Default download part size, KB
+	MinIO struct {
+		Endpoint  string `yaml:"endpoint"`
+		AccessKey string `yaml:"access_key"`
+		SecretKey string `yaml:"secret_key"`
 	}
 	// 服务器配置
 	Web struct {

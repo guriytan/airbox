@@ -5,6 +5,7 @@ import (
 
 	"airbox/global"
 	"airbox/logger"
+	"airbox/model/do"
 	"airbox/service"
 	"airbox/utils"
 	"airbox/utils/encryption"
@@ -26,7 +27,8 @@ func Login(c *gin.Context) {
 		}
 		token = cookie
 	}
-	claims, exp, err := encryption.ParseUserToken(token)
+	var claims do.User
+	exp, err := encryption.ParseUserToken(token, &claims)
 	if err != nil {
 		log.Infof("failed to parse token: %+v\n", err)
 		c.JSON(http.StatusForbidden, global.ErrorWithoutToken)
@@ -44,24 +46,6 @@ func Login(c *gin.Context) {
 		return
 	}
 	c.Set("Authorization", claims)
-
-	c.Next()
-}
-
-// CheckLink 拦截重置密码的链接是否有效
-func CheckLink(c *gin.Context) {
-	log := logger.GetLogger(c, "CheckLink")
-	token := c.Query("token")
-	id, exp, err := encryption.ParseEmailToken(token)
-	if err != nil {
-		log.Infof("failed to parse token: %+v\n", err)
-		c.JSON(http.StatusForbidden, global.ErrorOfExpectedLink)
-		return
-	} else if exp < utils.Epoch() {
-		c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
-		return
-	}
-	c.Set("id", id)
 
 	c.Next()
 }

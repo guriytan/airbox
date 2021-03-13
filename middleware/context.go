@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"airbox/global"
-	"airbox/model"
+	"airbox/model/do"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -22,7 +22,7 @@ func InjectContext(c *gin.Context) {
 
 	user, ok := c.Get("Authorization")
 	if ok {
-		c.Set(global.KeyUserID, user.(*model.User).ID)
+		c.Set(global.KeyUserID, user.(*do.User).ID)
 	}
 
 	c.Next()

@@ -46,7 +46,7 @@ func (router *Router) PathMapping() *Router {
 	user := router.Group("/user")
 	userController := controller.GetUserController()
 	user.POST("/new", userController.Register)                                   // 注册账号。form: username, password, email, code
-	user.PUT("/password", userController.ResetPwd, middleware.CheckLink)         // 忘记密码。form: token, password
+	user.PUT("/password", userController.ResetPwd)                               // 忘记密码。form: token, password
 	user.PUT("/:id/email", userController.ResetEmail, middleware.Login)          // 修改密码。form: email, code
 	user.PUT("/:id/password", userController.ResetPwdByOrigin, middleware.Login) // 修改邮箱。form: origin, password
 	user.DELETE("/:id", userController.Unsubscribe, middleware.Login)            // 删除账号。query: code

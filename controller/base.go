@@ -4,13 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/url"
-	"os"
 
+	"airbox/config"
 	"airbox/global"
 	"airbox/logger"
-	"airbox/model"
+	"airbox/model/do"
+	"airbox/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
 )
 
 // BaseController is responsible for the common operation of controller
@@ -23,39 +25,30 @@ func getBaseController() BaseController {
 }
 
 // verify return the authority of request
-func (*BaseController) auth(c *gin.Context) *model.User {
+func (*BaseController) auth(c *gin.Context) *do.User {
 	user, ok := c.Get("Authorization")
 	if ok {
-		return user.(*model.User)
+		return user.(*do.User)
 	}
 	return nil
 }
 
 // downloadFile 公共使用的下载文件模块
-func (*BaseController) downloadFile(c *gin.Context, file *model.File) {
-	ctx := c.Copy()
+func (b *BaseController) downloadFile(c *gin.Context, file *do.File) {
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "downloadFile")
-	open, err := os.Open(file.FileInfo.Path + file.FileInfo.Name)
+	storage := b.auth(c).Storage
+	object, err := config.GetOSS().GetObject(ctx, storage.BucketName, file.FileInfo.OssKey, minio.GetObjectOptions{})
 	if err != nil {
-		log.Infof("%+v\n", err)
-		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		log.WithError(err).Warnf("get object: %v from bucket: %v failed", file.FileInfo.OssKey, storage.BucketName)
+		c.JSON(http.StatusInternalServerError, global.ErrorDownloadFile)
 		return
 	}
-	stat, err := open.Stat()
-	if err != nil {
-		log.Infof("%+v\n", err)
-		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-		return
-	}
+	defer func() { _ = object.Close() }()
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
-	c.Header("Content-Disposition", "attachment; filename="+url.QueryEscape(stat.Name()))
-	http.ServeContent(c.Writer, c.Request, stat.Name(), stat.ModTime(), open)
-	defer func() {
-		if err = open.Close(); err != nil {
-			log.Infof("%+v\n", err)
-		}
-	}()
+	c.Header("Content-Disposition", "attachment; filename="+url.QueryEscape(file.FileInfo.Name))
+	http.ServeContent(c.Writer, c.Request, file.FileInfo.Name, file.FileInfo.UpdatedAt, object)
 }
 
 // Update 更新文件夹或者文件信息，包括重命名、移动和复制
@@ -63,7 +56,7 @@ func (*BaseController) downloadFile(c *gin.Context, file *model.File) {
 // 移动需要fid信息，若fid为空则表明移动到根目录
 // 复制则是在移动的基础上增加copy参数，当copy=true时表示复制
 func (*BaseController) Update(c *gin.Context, rename, copy, move func(ctx context.Context, param, id string) error) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "Update")
 	name, fid, copy2 := c.PostForm("name"), c.PostForm("fid"), c.PostForm("copy")
@@ -100,11 +93,11 @@ func (*BaseController) Update(c *gin.Context, rename, copy, move func(ctx contex
 }
 
 // Delete 删除文件或文件夹
-func (*BaseController) Delete(c *gin.Context, delete func(ctx context.Context, id string) error) {
-	ctx := c.Copy()
+func (b *BaseController) Delete(c *gin.Context, delete func(ctx context.Context, storage *do.Storage, id string) error) {
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "Delete")
-	if err := delete(ctx, c.Param("id")); err != nil {
+	if err := delete(ctx, &b.auth(c).Storage, c.Param("id")); err != nil {
 		log.Infof("%+v\n", err)
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return

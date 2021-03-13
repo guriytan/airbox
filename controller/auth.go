@@ -6,7 +6,8 @@ import (
 	"airbox/config"
 	"airbox/global"
 	"airbox/logger"
-	"airbox/model"
+	"airbox/model/do"
+	"airbox/model/vo"
 	"airbox/service"
 	"airbox/utils"
 	"airbox/utils/encryption"
@@ -38,22 +39,25 @@ func GetAuthController() *AuthController {
 // LoginToken 可通过输入用户名或者邮箱进行登录
 // 需要验证邮箱格式，用户名和密码长度以及验证码
 func (auth *AuthController) LoginToken(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "LoginToken")
-	user, password := c.PostForm("user"), c.PostForm("password")
-	if !utils.CheckEmailFormat(user) {
+	req := vo.LoginModel{}
+	if err := c.BindJSON(&req); err != nil {
+		return
+	}
+	if !utils.CheckEmailFormat(req.UserKey) {
 		// 用户输入用户名进行登录，判断用户名长度
-		if len(user) < global.UserMinLength || len(user) > global.UserMaxLength {
+		if len(req.UserKey) < global.UserMinLength || len(req.UserKey) > global.UserMaxLength {
 			c.JSON(http.StatusBadRequest, global.ErrorOfUsername)
 			return
 		}
 	}
-	if len(password) < global.UserMinLength || len(password) > global.UserMaxLength {
+	if len(req.Password) < global.UserMinLength || len(req.Password) > global.UserMaxLength {
 		c.JSON(http.StatusBadRequest, global.ErrorOfPassword)
 		return
 	}
-	if user, err := auth.user.Login(ctx, user, password); err != nil {
+	if user, err := auth.user.Login(ctx, req.UserKey, req.Password); err != nil {
 		log.Infof("%+v\n", err)
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	} else {
@@ -74,7 +78,8 @@ func (auth *AuthController) LoginToken(c *gin.Context) {
 
 // UnsubscribeCode 申请注销账户，向用户邮箱发送验证码邮件验证权限
 func (auth *AuthController) UnsubscribeCode(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
+
 	log := logger.GetLogger(ctx, "UnsubscribeCode")
 	// 发送验证码至邮箱
 	go func() {
@@ -88,7 +93,7 @@ func (auth *AuthController) UnsubscribeCode(c *gin.Context) {
 
 // ShareLink 获取分享文件的link
 func (auth *AuthController) ShareLink(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ShareLink")
 	id := c.PostForm("id")
@@ -116,7 +121,7 @@ func (auth *AuthController) ShareLink(c *gin.Context) {
 // RegisterCode 发送注册需要的邮箱验证码
 // 验证用户名长度和邮箱格式， 验证用户名和邮箱是否唯一
 func (auth *AuthController) RegisterCode(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "RegisterCode")
 	if !config.GetConfig().Register {
@@ -155,11 +160,11 @@ func (auth *AuthController) RegisterCode(c *gin.Context) {
 // 若为用户名则访问数据库获得邮箱
 // 发送重置密码链接至邮箱
 func (auth *AuthController) PasswordCode(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "PasswordCode")
 	info := c.PostForm("info")
-	var user *model.User
+	var user *do.User
 	var res bool
 	if !utils.CheckEmailFormat(info) {
 		// 用户输入用户名进行登录，判断用户名长度
@@ -181,7 +186,7 @@ func (auth *AuthController) PasswordCode(c *gin.Context) {
 	}
 	// 发送验证码至邮箱
 	go func() {
-		if err := auth.verify.SendResetLink(user.ID, info); err != nil {
+		if err := auth.verify.SendResetLink(ctx, user.ID, info); err != nil {
 			log.Infof("%+v\n", err)
 		}
 	}()
@@ -191,10 +196,11 @@ func (auth *AuthController) PasswordCode(c *gin.Context) {
 // EmailCode 发送重置邮箱需要的邮箱验证码
 // 直接发送邮箱验证码
 func (auth *AuthController) EmailCode(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
+
 	log := logger.GetLogger(c, "EmailCode")
 	user, email, password := auth.auth(c), c.PostForm("email"), c.PostForm("password")
-	if user.Password != encryption.EncryptPassword(password) {
+	if user.Password != password {
 		c.JSON(http.StatusBadRequest, global.ErrorOfWrongPassword)
 		return
 	}

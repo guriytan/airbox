@@ -58,6 +58,7 @@ const (
 	ErrorOfSamePassword     = "不能与原密码一致"
 	ErrorOfExpectedLink     = "链接失效"
 	ErrorOfCopyFile         = "不能复制或移动到自身"
+	ErrorDownloadFile       = "下载文件失败"
 )
 
 // 文件上传相关配置

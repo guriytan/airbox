@@ -37,7 +37,7 @@ func GetUserController() *UserController {
 // Register 验证用户名和密码长度以及邮箱格式， 验证邮箱验证码
 // 验证用户名是否可用，通过从缓存读取email的邮箱验证码间接验证邮箱是否可用
 func (u *UserController) Register(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "Register")
 	if !config.GetConfig().Register {
@@ -80,19 +80,28 @@ func (u *UserController) Register(c *gin.Context) {
 // 解析链接中的token，判断邮箱是否存在
 // 验证密码长度，验证原密码和新密码是否一样
 func (u *UserController) ResetPwd(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ResetPwd")
+	token := c.Query("token")
+	id, exp, err := encryption.ParseEmailToken(token)
+	if err != nil {
+		log.Infof("failed to parse token: %+v\n", err)
+		c.JSON(http.StatusForbidden, global.ErrorOfExpectedLink)
+		return
+	} else if exp < utils.Epoch() {
+		c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
+		return
+	}
 	password := c.PostForm("password")
 	if len(password) < global.UserMinLength || len(password) > global.UserMaxLength {
 		c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
 		return
 	}
-	id := c.MustGet("id").(string)
 	if user, err := u.user.GetUserByID(ctx, id); err != nil {
 		c.JSON(http.StatusBadRequest, global.ErrorOfExpectedLink)
 		return
-	} else if user.Password == encryption.EncryptPassword(password) {
+	} else if user.Password == password {
 		c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 		return
 	}
@@ -107,12 +116,12 @@ func (u *UserController) ResetPwd(c *gin.Context) {
 // ResetPwdByOrigin 用户信息界面的重置密码
 // 验证原密码和新密码长度，验证原密码和新密码是否一样，验证原密码是否真实密码
 func (u *UserController) ResetPwdByOrigin(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
 	user := u.auth(c)
 	origin, password := c.PostForm("origin"), c.PostForm("password")
-	if user.Password != encryption.EncryptPassword(origin) {
+	if user.Password != origin {
 		c.JSON(http.StatusBadRequest, global.ErrorOfWrongPassword)
 		return
 	} else if origin == password {
@@ -130,7 +139,7 @@ func (u *UserController) ResetPwdByOrigin(c *gin.Context) {
 // ResetEmail 重置邮箱
 // 验证邮箱格式以及和原邮箱是否一样，验证邮箱验证码
 func (u *UserController) ResetEmail(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
 	user, email, code := u.auth(c), c.PostForm("email"), c.PostForm("code")
@@ -168,7 +177,7 @@ func (u *UserController) ResetEmail(c *gin.Context) {
 
 // Unsubscribe 注销账户
 func (u *UserController) Unsubscribe(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
 	user := u.auth(c)

@@ -26,6 +26,10 @@ func main() {
 		log.Errorf("初始化db失败: %v", err)
 		return
 	}
+	if err := config.InitializeOSS(); err != nil {
+		log.Errorf("初始化oss失败: %v", err)
+		return
+	}
 	if err := config.InitializeMail(); err != nil {
 		log.Errorf("初始化mail失败: %v", err)
 		return

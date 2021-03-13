@@ -8,6 +8,7 @@ import (
 	"airbox/global"
 	"airbox/logger"
 	"airbox/service"
+	"airbox/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
@@ -35,7 +36,7 @@ func GetFileController() *FileController {
 
 // UploadFile 文件上传
 func (f *FileController) UploadFile(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "UploadFile")
 	data := make(map[string]interface{})
@@ -51,7 +52,7 @@ func (f *FileController) UploadFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 		return
 	}
-	size, hash, sid, fid := uint64(0), "", user.Storage.ID, c.Query("fid")
+	size, hash, sid, fid := int64(0), "", user.Storage.ID, c.Query("fid")
 	// 判断fid对应的文件夹是否存在
 	for {
 		// 获得Reader流
@@ -74,7 +75,7 @@ func (f *FileController) UploadFile(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 				return
 			}
-			size, err = strconv.ParseUint(s, 10, 64)
+			size, err = strconv.ParseInt(s, 10, 64)
 			if err != nil {
 				_ = part.Close()
 				log.Infof("%+v\n", err)
@@ -104,7 +105,7 @@ func (f *FileController) UploadFile(c *gin.Context) {
 			fileByHash, err := f.file.SelectFileByHash(ctx, hash)
 			if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && fileByHash.Size != size) {
 				// 调用service方法保存文件数据
-				fileByHash, err = f.file.UploadFile(ctx, part, sid, hash, size)
+				fileByHash, err = f.file.UploadFile(ctx, &f.auth(c).Storage, part, hash, size)
 				if err != nil {
 					_ = part.Close()
 					log.Infof("%+v\n", err)
@@ -132,7 +133,7 @@ func (f *FileController) UploadFile(c *gin.Context) {
 
 // DownloadFile 文件下载
 func (f *FileController) DownloadFile(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "DownloadFile")
 	// 获取所要下载的文件信息
@@ -142,7 +143,7 @@ func (f *FileController) DownloadFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	f.downloadFile(ctx, fileByID)
+	f.downloadFile(c, fileByID)
 }
 
 // DeleteFile 删除文件

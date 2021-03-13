@@ -17,11 +17,6 @@ func Epoch() int64 {
 	return time.Now().Unix()
 }
 
-// Exp return expiration time in second
-func Exp(ttl time.Duration) int64 {
-	return time.Now().Add(ttl).Unix()
-}
-
 // CheckEmailFormat 检查邮箱格式
 func CheckEmailFormat(email string) bool {
 	return reg.MatchString(email)

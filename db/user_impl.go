@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"airbox/db/base"
-	"airbox/model"
+	"airbox/model/do"
 
 	"gorm.io/gorm"
 )
@@ -16,7 +16,7 @@ type UserDaoImpl struct {
 }
 
 // InsertUser 新增用户
-func (u *UserDaoImpl) InsertUser(ctx context.Context, tx *gorm.DB, user *model.User) error {
+func (u *UserDaoImpl) InsertUser(ctx context.Context, tx *gorm.DB, user *do.User) error {
 	if tx == nil {
 		tx = u.db.WithContext(ctx)
 	}
@@ -28,39 +28,39 @@ func (u *UserDaoImpl) DeleteUserByID(ctx context.Context, tx *gorm.DB, id string
 	if tx == nil {
 		tx = u.db.WithContext(ctx)
 	}
-	return tx.Delete(&model.User{}, "id = ?", id).Error
+	return tx.Delete(&do.User{}, "id = ?", id).Error
 }
 
 // UpdateUser 更新用户信息
-func (u *UserDaoImpl) UpdateUser(ctx context.Context, user *model.User) error {
-	return u.db.WithContext(ctx).Model(&model.User{}).Updates(user).Error
+func (u *UserDaoImpl) UpdateUser(ctx context.Context, user *do.User) error {
+	return u.db.WithContext(ctx).Model(&do.User{}).Updates(user).Error
 }
 
 // SelectUserByID 根据用户ID获得用户
-func (u *UserDaoImpl) SelectUserByID(ctx context.Context, id string) (*model.User, error) {
-	user := &model.User{}
+func (u *UserDaoImpl) SelectUserByID(ctx context.Context, id string) (*do.User, error) {
+	user := &do.User{}
 	err := u.db.WithContext(ctx).Preload("Storage").Where("id = ?", id).Find(user).Error
 	return user, err
 }
 
 // SelectUserByPwdAndNameOrEmail 根据用户名或邮箱以及密码获得用户
-func (u *UserDaoImpl) SelectUserByPwdAndNameOrEmail(ctx context.Context, name, pwd string) (*model.User, error) {
-	user := &model.User{}
+func (u *UserDaoImpl) SelectUserByPwdAndNameOrEmail(ctx context.Context, name, pwd string) (*do.User, error) {
+	user := &do.User{}
 	sql := u.db.WithContext(ctx).Preload("Storage")
 	err := sql.Where("password = ? and (name = ? or email = ?)", pwd, name, name).Order("id").Limit(1).Find(user).Error
 	return user, err
 }
 
 // SelectUserByName 根据用户名获得用户
-func (u *UserDaoImpl) SelectUserByName(ctx context.Context, username string) (*model.User, error) {
-	user := &model.User{}
+func (u *UserDaoImpl) SelectUserByName(ctx context.Context, username string) (*do.User, error) {
+	user := &do.User{}
 	res := u.db.WithContext(ctx).Find(user, "name = ?", username).Error
 	return user, res
 }
 
 // SelectUserByEmail 根据邮箱获得用户
-func (u *UserDaoImpl) SelectUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	user := &model.User{}
+func (u *UserDaoImpl) SelectUserByEmail(ctx context.Context, email string) (*do.User, error) {
+	user := &do.User{}
 	res := u.db.WithContext(ctx).Find(user, "email = ?", email).Error
 	return user, res
 }

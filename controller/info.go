@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 
 	"airbox/global"
 	"airbox/logger"
@@ -33,7 +34,7 @@ func GetInfoController() *InfoController {
 
 // ListFile 显示文件和文件夹列表
 func (info *InfoController) ListFile(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ListFile")
 	data := make(map[string]interface{})
@@ -60,7 +61,7 @@ func (info *InfoController) ListFile(c *gin.Context) {
 
 // UserInfo 显示用户及相关信息
 func (info *InfoController) UserInfo(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "UserInfo")
 	data := make(map[string]interface{})
@@ -83,10 +84,12 @@ func (info *InfoController) UserInfo(c *gin.Context) {
 
 // ListType 显示对应类型的文件
 func (info *InfoController) ListType(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ListType")
-	files, err := info.file.GetFileByType(ctx, c.Query("type"))
+	query := c.Query("type")
+	fileType, _ := strconv.ParseInt(query, 10, 64)
+	files, err := info.file.GetFileByType(ctx, int(fileType))
 	if err != nil {
 		log.Infof("%+v\n", err)
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
@@ -99,7 +102,7 @@ func (info *InfoController) ListType(c *gin.Context) {
 
 // ShareFile 分享文件
 func (info *InfoController) ShareFile(c *gin.Context) {
-	ctx := c.Copy()
+	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ShareFile")
 	token := c.PostForm("link")
