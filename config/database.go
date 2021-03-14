@@ -21,12 +21,11 @@ func GetDB() *gorm.DB {
 // InitializeDB 初始化数据库
 func InitializeDB() error {
 	var err error
-	db, err = gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=utf8mb4&loc=Local&parseTime=true",
-		GetConfig().DataSource.Username,
-		GetConfig().DataSource.Password,
-		GetConfig().DataSource.Host,
-		GetConfig().DataSource.Port,
-		GetConfig().DataSource.Database)), &gorm.Config{
+	db, err = gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&loc=Local&parseTime=true",
+		GetConfig().MySQL.Username,
+		GetConfig().MySQL.Password,
+		GetConfig().MySQL.Host,
+		GetConfig().MySQL.Database)), &gorm.Config{
 		SkipDefaultTransaction: true,
 		NamingStrategy:         schema.NamingStrategy{SingularTable: true},
 		Logger:                 log.Default,
@@ -66,13 +65,13 @@ func createTables() error {
 			return err
 		}
 	}
-	if !migrator.HasTable(&do.File{}) {
-		if err := migrator.CreateTable(&do.File{}); err != nil {
+	if !migrator.HasTable(&do.FileInfo{}) {
+		if err := migrator.CreateTable(&do.FileInfo{}); err != nil {
 			return err
 		}
 	}
-	if !migrator.HasTable(&do.FileInfo{}) {
-		if err := migrator.CreateTable(&do.FileInfo{}); err != nil {
+	if !migrator.HasTable(&do.File{}) {
+		if err := migrator.CreateTable(&do.File{}); err != nil {
 			return err
 		}
 	}

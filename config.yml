@@ -1,0 +1,19 @@
+mail:
+  addr:
+  port:
+  username:
+  password:
+mysql:
+  host: 127.0.0.1:3306
+  database: box
+  username: root
+  password: root
+redis:
+  host: 127.0.0.1:6379
+  password:
+minio:
+  endpoint: 127.0.0.1:9000
+  access_key: JvUphxqQL9Eur7ExXurC
+  secret_key: rsFR657sUjRm6DQoVUYk3EfTue9BdDCxB7kD4tffku8DeviKgcFbNoLCMMc2Ez7D
+web:
+  site:

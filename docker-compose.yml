@@ -1,4 +1,4 @@
-version: '1'
+version: "3"
 services:
   redis:
     image: "redis:latest"
@@ -7,7 +7,7 @@ services:
       - "6379:6379"
   mysql:
     image: "mysql:latest"
-    container_name: box-redis
+    container_name: box-mysql
     command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci #设置utf8字符集
     restart: always
     environment:
@@ -17,10 +17,12 @@ services:
       - "3306:3306"
   minio:
     image: "minio/minio:latest"
+    container_name: box-minio
     volumes:
-      - /home/data:/data
+      - /Users/admin/minio:/data
     ports:
       - "9000:9000"
+    command: server /data
     environment:
       MINIO_ACCESS_KEY: JvUphxqQL9Eur7ExXurC
       MINIO_SECRET_KEY: rsFR657sUjRm6DQoVUYk3EfTue9BdDCxB7kD4tffku8DeviKgcFbNoLCMMc2Ez7D
