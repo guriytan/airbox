@@ -6,6 +6,7 @@ import (
 
 	"airbox/db/base"
 	"airbox/model/do"
+	"airbox/utils/hasher"
 
 	"gorm.io/gorm"
 )
@@ -47,22 +48,31 @@ func (u *UserDaoImpl) SelectUserByID(ctx context.Context, id string) (*do.User, 
 func (u *UserDaoImpl) SelectUserByPwdAndNameOrEmail(ctx context.Context, name, pwd string) (*do.User, error) {
 	user := &do.User{}
 	sql := u.db.WithContext(ctx).Preload("Storage")
-	err := sql.Where("password = ? and (name = ? or email = ?)", pwd, name, name).Order("id").Limit(1).Find(user).Error
-	return user, err
+	result := sql.Where("hash = ? and (name = ? or email = ?)", hasher.GetSha256().Hash(pwd), name, name).Order("id").Limit(1).Find(user)
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return user, result.Error
 }
 
 // SelectUserByName 根据用户名获得用户
 func (u *UserDaoImpl) SelectUserByName(ctx context.Context, username string) (*do.User, error) {
 	user := &do.User{}
-	res := u.db.WithContext(ctx).Find(user, "name = ?", username).Error
-	return user, res
+	res := u.db.WithContext(ctx).Find(user, "name = ?", username)
+	if res.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return user, res.Error
 }
 
 // SelectUserByEmail 根据邮箱获得用户
 func (u *UserDaoImpl) SelectUserByEmail(ctx context.Context, email string) (*do.User, error) {
 	user := &do.User{}
-	res := u.db.WithContext(ctx).Find(user, "email = ?", email).Error
-	return user, res
+	res := u.db.WithContext(ctx).Find(user, "email = ?", email)
+	if res.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return user, res.Error
 }
 
 var (

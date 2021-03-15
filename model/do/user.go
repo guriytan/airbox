@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	"airbox/utils/encryption"
+	"airbox/utils/hasher"
 )
 
 var (
@@ -14,12 +15,12 @@ var (
 
 type User struct {
 	Model
-
-	Storage Storage // 对应数据仓库
-
 	Name     string `gorm:"type:varchar(20);uniqueIndex"` // 用户名
 	Password string `gorm:"type:varchar(80);index"`       // 密码
+	Hash     string `gorm:"type:char(64);index"`
 	Email    string `gorm:"type:varchar(50);uniqueIndex"` // 邮箱
+
+	Storage Storage // 对应数据仓库
 }
 
 func (user *User) BeforeCreate(tx *gorm.DB) error {
@@ -27,6 +28,7 @@ func (user *User) BeforeCreate(tx *gorm.DB) error {
 		user.ID = uuid.New().String()
 	}
 	if len(user.Password) != 0 {
+		user.Hash = hasher.GetSha256().Hash(user.Password)
 		user.Password = encryption.EncryptPassword(user.Password)
 	}
 	return nil

@@ -1,8 +1,10 @@
-package config
+package pkg
 
 import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	"airbox/config"
 )
 
 var oss *minio.Client
@@ -15,8 +17,8 @@ func GetOSS() *minio.Client {
 func InitializeOSS() error {
 	// Initialize minio client object.
 	var err error
-	oss, err = minio.New(GetConfig().MinIO.Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(GetConfig().MinIO.AccessKey, GetConfig().MinIO.SecretKey, ""),
+	oss, err = minio.New(config.GetConfig().MinIO.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(config.GetConfig().MinIO.AccessKey, config.GetConfig().MinIO.SecretKey, ""),
 		Secure: false,
 	})
 	if err != nil {

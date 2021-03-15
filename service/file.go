@@ -16,6 +16,7 @@ import (
 	"airbox/logger"
 	"airbox/model/do"
 	"airbox/utils"
+	"airbox/utils/hasher"
 
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
@@ -35,9 +36,9 @@ var (
 func GetFileService() *FileService {
 	fileServiceOnce.Do(func() {
 		fileService = &FileService{
-			info:    db.GetFileInfoDao(config.GetDB()),
-			file:    db.GetFileDao(config.GetDB()),
-			storage: db.GetStorageDao(config.GetDB()),
+			info:    db.GetFileInfoDao(pkg.GetDB()),
+			file:    db.GetFileDao(pkg.GetDB()),
+			storage: db.GetStorageDao(pkg.GetDB()),
 		}
 	})
 	return fileService
@@ -101,19 +102,19 @@ func (f *FileService) SelectFileTypeCount(ctx context.Context, sid string) (type
 // UploadFile 保存文件信息，并更新数据仓库的容量大小
 func (f *FileService) UploadFile(ctx context.Context, storage *do.Storage, part *multipart.Part, hash string, size int64) (*do.FileInfo, error) {
 	log := logger.GetLogger(ctx, "UploadFile")
-	ossKey := utils.Hash(storage.BucketName, part.FileName(), hash)
+	ossKey := hasher.GetMD5().Hash(storage.BucketName, part.FileName(), hash)
 	fileInfo := &do.FileInfo{
 		Hash:   hash,
 		Name:   part.FileName(),
 		OssKey: ossKey,
 		Size:   size,
 	}
-	err := config.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := f.info.InsertFileInfo(ctx, fileInfo); err != nil {
 			log.WithError(err).Warnf("save file info: %+v failed", fileInfo)
 			return err
 		}
-		info, err := config.GetOSS().PutObject(ctx, storage.BucketName, ossKey, part, size, minio.PutObjectOptions{})
+		info, err := pkg.GetOSS().PutObject(ctx, storage.BucketName, ossKey, part, size, minio.PutObjectOptions{})
 		if err != nil {
 			log.WithError(err).Warnf("put object: %v size: %v to oss: %v failed", ossKey, size, storage.BucketName)
 			return err
@@ -148,7 +149,7 @@ func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, sid, fid
 	if len(fid) != 0 {
 		file.FatherID = fid
 	}
-	err := config.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := f.file.InsertFile(ctx, tx, file); err != nil {
 			log.WithError(err).Warnf("save file: %+v failed", file)
 			return err
@@ -177,7 +178,7 @@ func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, id st
 	if err != nil {
 		return err
 	}
-	err = config.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := f.file.DeleteFileByID(ctx, id); err != nil {
 			log.WithError(err).Warnf("delete file: %v failed", id)
 			return err
@@ -196,7 +197,7 @@ func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, id st
 				log.WithError(err).Warnf("delete file info: %v failed", file.FileInfoID)
 				return err
 			}
-			if err := config.GetOSS().RemoveObject(ctx, storage.BucketName, file.FileInfo.OssKey, minio.RemoveObjectOptions{}); err != nil {
+			if err := pkg.GetOSS().RemoveObject(ctx, storage.BucketName, file.FileInfo.OssKey, minio.RemoveObjectOptions{}); err != nil {
 				log.WithError(err).Warnf("remove object: %v from bucket: %v failed", file.FileInfo.OssKey, storage.BucketName)
 				return err
 			}

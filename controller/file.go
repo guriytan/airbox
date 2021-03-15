@@ -3,10 +3,11 @@ package controller
 import (
 	"io"
 	"net/http"
-	"strconv"
+	"sync"
 
 	"airbox/global"
 	"airbox/logger"
+	"airbox/model/vo"
 	"airbox/service"
 	"airbox/utils"
 
@@ -21,16 +22,19 @@ type FileController struct {
 	user *service.UserService
 }
 
-var file *FileController
+var (
+	file     *FileController
+	fileOnce sync.Once
+)
 
 func GetFileController() *FileController {
-	if file == nil {
+	fileOnce.Do(func() {
 		file = &FileController{
 			BaseController: getBaseController(),
 			file:           service.GetFileService(),
 			user:           service.GetUserService(),
 		}
-	}
+	})
 	return file
 }
 
@@ -39,96 +43,62 @@ func (f *FileController) UploadFile(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "UploadFile")
-	data := make(map[string]interface{})
+	req := vo.FileModel{}
+	if err := c.BindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
 	reader, err := c.Request.MultipartReader()
 	if err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("get miltipart failed")
 		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 		return
 	}
-	user, err := f.user.GetUserByID(ctx, f.auth(c).ID)
+	user, err := f.user.GetUserByID(ctx, f.GetAuth(c).ID)
 	if err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("get user failed")
 		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 		return
 	}
-	size, hash, sid, fid := int64(0), "", user.Storage.ID, c.Query("fid")
+	// 判断仓库的剩余容量是否足以存放该文件
+	if user.Storage.CurrentSize+req.Size >= user.Storage.MaxSize {
+		c.JSON(http.StatusBadRequest, global.ErrorOutOfSpace)
+		return
+	}
 	// 判断fid对应的文件夹是否存在
-	for {
-		// 获得Reader流
-		part, err := reader.NextPart()
-		// 若读取到结尾则跳出
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			log.Infof("%+v\n", err)
-			c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+	// 获得Reader流
+	part, err := reader.NextPart()
+	// 若读取到结尾则跳出
+	if err == io.EOF {
+		return
+	} else if err != nil {
+		log.WithError(err).Warnf("read multipart failed")
+		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+		return
+	}
+	defer func() { _ = part.Close() }()
+	// 查找是否存在md5相同的文件
+	fileByHash, err := f.file.SelectFileByHash(ctx, req.Hash)
+	if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && fileByHash.Size != req.Size) {
+		// 调用service方法保存文件数据
+		fileByHash, err = f.file.UploadFile(ctx, &f.GetAuth(c).Storage, part, req.Hash, req.Size)
+		if err != nil {
+			log.WithError(err).Warnf("upload file failed")
+			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			return
 		}
-		switch part.FormName() {
-		case "size":
-			// 读取文件的大小
-			s, err := readString(part)
-			if err != nil {
-				_ = part.Close()
-				log.Infof("%+v\n", err)
-				c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
-				return
-			}
-			size, err = strconv.ParseInt(s, 10, 64)
-			if err != nil {
-				_ = part.Close()
-				log.Infof("%+v\n", err)
-				c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
-				return
-			}
-			// 判断仓库的剩余容量是否足以存放该文件
-			if user.Storage.CurrentSize+size >= user.Storage.MaxSize {
-				_ = part.Close()
-				c.JSON(http.StatusBadRequest, global.ErrorOutOfSpace)
-				return
-			}
-		case "hash":
-			// 读取文件的MD5
-			hash, err = readString(part)
-			if err != nil {
-				_ = part.Close()
-				log.Infof("%+v\n", err)
-				c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
-				return
-			}
-		case "folder":
-			// 若文件存在前置文件夹，则需要调用folder service进行对文件夹进行分割
-			// 并在数据库中创建每一层文件夹，最终返回最终层文件夹fid
-		default:
-			// 查找是否存在md5相同的文件
-			fileByHash, err := f.file.SelectFileByHash(ctx, hash)
-			if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && fileByHash.Size != size) {
-				// 调用service方法保存文件数据
-				fileByHash, err = f.file.UploadFile(ctx, &f.auth(c).Storage, part, hash, size)
-				if err != nil {
-					_ = part.Close()
-					log.Infof("%+v\n", err)
-					c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-					return
-				}
-			} else if err != nil {
-				log.Infof("%+v\n", err)
-				c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-				return
-			}
-			file, err := f.file.StoreFile(ctx, fileByHash, sid, fid)
-			if err != nil {
-				_ = part.Close()
-				log.Infof("%+v\n", err)
-				c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-				return
-			}
-			data["file"] = file
-		}
-		_ = part.Close()
+	} else if err != nil {
+		log.WithError(err).Warnf("get file by hash failed")
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
 	}
-	c.JSON(http.StatusOK, data)
+	file, err := f.file.StoreFile(ctx, fileByHash, user.Storage.ID, req.FatherID)
+	if err != nil {
+		log.WithError(err).Warnf("store file failed")
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
+	}
+	c.JSON(http.StatusOK, map[string]interface{}{"file": file})
 }
 
 // DownloadFile 文件下载
@@ -136,31 +106,75 @@ func (f *FileController) DownloadFile(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "DownloadFile")
+	req := vo.FileModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
 	// 获取所要下载的文件信息
-	fileByID, err := info.file.GetFileByID(ctx, c.Param("id"))
+	fileByID, err := f.file.GetFileByID(ctx, req.FileID)
 	if err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("get file by id failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	f.downloadFile(c, fileByID)
+	f.BaseController.DownloadFile(c, fileByID)
 }
 
 // DeleteFile 删除文件
 func (f *FileController) DeleteFile(c *gin.Context) {
-	f.Delete(c, f.file.DeleteFile)
+	ctx := utils.CopyCtx(c)
+
+	log := logger.GetLogger(ctx, "Delete")
+	req := vo.FileModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := f.file.DeleteFile(ctx, &f.GetAuth(c).Storage, req.FileID); err != nil {
+		log.WithError(err).Warnf("delete file failed")
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
+	}
+	c.Status(http.StatusOK)
 }
 
 // UpdateFile 更新文件信息，包括重命名、移动和复制
 func (f *FileController) UpdateFile(c *gin.Context) {
-	f.Update(c, f.file.RenameFile, f.file.CopyFile, f.file.MoveFile)
-}
+	ctx := utils.CopyCtx(c)
 
-func readString(r io.Reader) (string, error) {
-	buf := make([]byte, 1024)
-	n, err := io.ReadFull(r, buf)
-	if err != nil && err != io.ErrUnexpectedEOF {
-		return "", err
+	log := logger.GetLogger(ctx, "Update")
+	req := vo.UpdateFileModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
 	}
-	return string(buf[:n]), nil
+	if req.FatherID == req.FileID {
+		c.JSON(http.StatusBadRequest, global.ErrorOfCopyFile)
+		return
+	}
+	switch req.OptType {
+	case global.OperationTypeRename:
+		// 重命名
+		if err := f.file.RenameFile(ctx, req.Name, req.FileID); err != nil {
+			log.WithError(err).Warnf("rename failed")
+			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+			return
+		}
+	case global.OperationTypeCopy:
+		// 复制
+		if err := f.file.CopyFile(ctx, req.FatherID, req.FileID); err != nil {
+			log.WithError(err).Warnf("copy failed")
+			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+			return
+		}
+	case global.OperationTypeMove:
+		// 移动
+		if err := f.file.MoveFile(ctx, req.FatherID, req.FileID); err != nil {
+			log.WithError(err).Warnf("move failed")
+			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+			return
+		}
+	}
+	c.Status(http.StatusOK)
 }

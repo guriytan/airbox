@@ -7,7 +7,7 @@ import (
 )
 
 // GenerateUserToken return the token of user which used to verify the authority
-func GenerateUserToken(key ...interface{}) (string, error) {
+func GenerateUserToken(key interface{}) (string, error) {
 	marshal, err := json.Marshal(key)
 	if err != nil {
 		return "", err

@@ -14,6 +14,7 @@ type Router struct {
 
 func (router *Router) PathMapping() *Router {
 	router.Use(cors.Default())
+	router.Use(gin.Recovery())
 	router.Use(middleware.InjectContext)
 
 	// info组，负责一些显示的数据以及文件分享api
@@ -28,11 +29,11 @@ func (router *Router) PathMapping() *Router {
 	auth := router.Group("/auth")
 	authController := controller.GetAuthController()
 	auth.POST("/token", authController.LoginToken)                              // 获取登录token。form: user, password
-	auth.POST("/unsubscribe", authController.UnsubscribeCode, middleware.Login) // 获取注销账号captcha。
-	auth.POST("/share", authController.ShareLink, middleware.Login)             // 获取文件分享link。form: id（文件）
+	auth.POST("/unsubscribe", middleware.Login, authController.UnsubscribeCode) // 获取注销账号captcha。
+	auth.POST("/share", middleware.Login, authController.ShareLink)             // 获取文件分享link。form: id（文件）
 	auth.POST("/register", authController.RegisterCode)                         // 获取注册账号captcha。form: username, email
 	auth.POST("/password", authController.PasswordCode)                         // 获取重置密码link。form: user
-	auth.POST("/email", authController.EmailCode, middleware.Login)             // 获取重置邮箱captcha。form: email, password
+	auth.POST("/email", middleware.Login, authController.EmailCode)             // 获取重置邮箱captcha。form: email, password
 
 	// file组，负责文件相关操作的api
 	file := router.Group("/file", middleware.Login)
@@ -47,9 +48,9 @@ func (router *Router) PathMapping() *Router {
 	userController := controller.GetUserController()
 	user.POST("/new", userController.Register)                                   // 注册账号。form: username, password, email, code
 	user.PUT("/password", userController.ResetPwd)                               // 忘记密码。form: token, password
-	user.PUT("/:id/email", userController.ResetEmail, middleware.Login)          // 修改密码。form: email, code
-	user.PUT("/:id/password", userController.ResetPwdByOrigin, middleware.Login) // 修改邮箱。form: origin, password
-	user.DELETE("/:id", userController.Unsubscribe, middleware.Login)            // 删除账号。query: code
+	user.DELETE("/:id", middleware.Login, userController.Unsubscribe)            // 删除账号。query: code
+	user.PUT("/email/:id", middleware.Login, userController.ResetEmail)          // 修改密码。form: email, code
+	user.PUT("/password/:id", middleware.Login, userController.ResetPwdByOrigin) // 修改邮箱。form: origin, password
 
 	return router
 }

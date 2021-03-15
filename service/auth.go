@@ -7,7 +7,6 @@ import (
 	"airbox/cache"
 	"airbox/config"
 	"airbox/logger"
-	"airbox/utils"
 	"airbox/utils/encryption"
 )
 
@@ -22,7 +21,7 @@ var (
 
 func GetAuthService() *AuthService {
 	authOnce.Do(func() {
-		auth = &AuthService{redis: cache.GetRedisClient(config.GetCache())}
+		auth = &AuthService{redis: cache.GetRedisClient(pkg.GetCache())}
 	})
 	return auth
 }
@@ -48,7 +47,7 @@ func (c *AuthService) SendCaptcha(ctx context.Context, email string) error {
 		log.WithError(err).Warnf("set captcha: %v, email: %v to redis failed", captcha, email)
 		return err
 	}
-	if err := utils.SendCaptcha(email, captcha); err != nil {
+	if err := SendCaptcha(ctx, email, captcha); err != nil {
 		log.WithError(err).Warnf("send captcha: %v to email: %v failed", captcha, email)
 		return err
 	}
@@ -72,8 +71,8 @@ func (c *AuthService) SendResetLink(ctx context.Context, id, email string) error
 		log.WithError(err).Warnf("generate email token: %v failed", id)
 		return err
 	}
-	link := config.GetConfig().Web.Site + "/reset/" + captcha
-	if err := utils.SendResetLink(email, link); err != nil {
+	link := pkg.GetConfig().Web.Site + "/reset/" + captcha
+	if err := SendResetLink(ctx, email, link); err != nil {
 		log.WithError(err).Warnf("send token: %v to email: %v failed", captcha, email)
 		return err
 	}

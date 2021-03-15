@@ -17,3 +17,4 @@ minio:
   secret_key: rsFR657sUjRm6DQoVUYk3EfTue9BdDCxB7kD4tffku8DeviKgcFbNoLCMMc2Ez7D
 web:
   site:
+register: true

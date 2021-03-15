@@ -2,15 +2,17 @@ package controller
 
 import (
 	"net/http"
+	"sync"
+
+	"github.com/gin-gonic/gin"
 
 	"airbox/config"
 	"airbox/global"
 	"airbox/logger"
+	"airbox/model/vo"
 	"airbox/service"
 	"airbox/utils"
 	"airbox/utils/encryption"
-
-	"github.com/gin-gonic/gin"
 )
 
 // UserController is responsible for the request of user operation
@@ -20,17 +22,20 @@ type UserController struct {
 	verify *service.AuthService
 }
 
-var user *UserController
+var (
+	user     *UserController
+	userOnce sync.Once
+)
 
 // GetUserController return instance of UserController
 func GetUserController() *UserController {
-	if user == nil {
+	userOnce.Do(func() {
 		user = &UserController{
 			BaseController: getBaseController(),
 			user:           service.GetUserService(),
 			verify:         service.GetAuthService(),
 		}
-	}
+	})
 	return user
 }
 
@@ -40,39 +45,42 @@ func (u *UserController) Register(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "Register")
-	if !config.GetConfig().Register {
+	if !pkg.GetConfig().Register {
 		c.JSON(http.StatusBadRequest, global.ErrorOfForbidRegister)
 		return
 	}
-	email, code := c.PostForm("email"), c.PostForm("code")
+	req := vo.UserModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
 	// 从缓存中使用邮箱作为key获取邮箱验证码与表单的邮箱验证码比对
-	if !u.verify.VerifyEmailCaptcha(ctx, email, code) {
+	if !u.verify.VerifyEmailCaptcha(ctx, req.Email, req.Code) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfCaptcha)
 		return
 	}
-	password, username := c.PostForm("password"), c.PostForm("username")
-	if len(password) < global.UserMinLength || len(password) > global.UserMaxLength {
+	if len(req.Password) < global.UserMinLength || len(req.Password) > global.UserMaxLength {
 		c.JSON(http.StatusBadRequest, global.ErrorOfPassword)
 		return
 	}
-	if len(username) < global.UserMinLength || len(username) > global.UserMaxLength {
+	if len(req.Username) < global.UserMinLength || len(req.Username) > global.UserMaxLength {
 		c.JSON(http.StatusBadRequest, global.ErrorOfUsername)
 		return
 	}
-	if !utils.CheckEmailFormat(email) {
+	if !utils.CheckEmailFormat(req.Email) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
 		return
 	}
-	if _, res := u.user.GetUserByUsername(ctx, username); !res {
+	if _, res := u.user.GetUserByUsername(ctx, req.Username); res {
 		c.JSON(http.StatusBadRequest, global.ErrorOfExistUsername)
 		return
 	}
-	if err := u.user.Registry(ctx, username, password, email); err != nil {
-		log.Infof("%+v\n", err)
+	if err := u.user.Registry(ctx, req.Username, req.Password, req.Email); err != nil {
+		log.WithError(err).Warnf("registry failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	u.verify.DeleteCaptcha(ctx, email)
+	u.verify.DeleteCaptcha(ctx, req.Email)
 	c.Status(http.StatusOK)
 }
 
@@ -83,10 +91,14 @@ func (u *UserController) ResetPwd(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ResetPwd")
-	token := c.Query("token")
-	id, exp, err := encryption.ParseEmailToken(token)
+	req := vo.TokenModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	id, exp, err := encryption.ParseEmailToken(req.Token)
 	if err != nil {
-		log.Infof("failed to parse token: %+v\n", err)
+		log.WithError(err).Warnf("parse email token failed")
 		c.JSON(http.StatusForbidden, global.ErrorOfExpectedLink)
 		return
 	} else if exp < utils.Epoch() {
@@ -106,7 +118,7 @@ func (u *UserController) ResetPwd(c *gin.Context) {
 		return
 	}
 	if err := u.user.ResetPwd(ctx, id, password); err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("reset password failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
@@ -119,17 +131,21 @@ func (u *UserController) ResetPwdByOrigin(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
-	user := u.auth(c)
-	origin, password := c.PostForm("origin"), c.PostForm("password")
-	if user.Password != origin {
+	req := vo.ResetPasswordModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	user := u.GetAuth(c)
+	if user.Password != encryption.EncryptPassword(req.Origin) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfWrongPassword)
 		return
-	} else if origin == password {
+	} else if req.Origin == req.Reset {
 		c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 		return
 	}
-	if err := u.user.ResetPwd(ctx, user.ID, password); err != nil {
-		log.Infof("%+v\n", err)
+	if err := u.user.ResetPwd(ctx, user.ID, req.Reset); err != nil {
+		log.WithError(err).Warnf("reset password failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
@@ -142,36 +158,39 @@ func (u *UserController) ResetEmail(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
-	user, email, code := u.auth(c), c.PostForm("email"), c.PostForm("code")
+	req := vo.ResetEmailModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	user := u.GetAuth(c)
 	// 将email作为key从缓存中提取验证码比对
-	if !u.verify.VerifyEmailCaptcha(ctx, email, code) {
+	if !u.verify.VerifyEmailCaptcha(ctx, req.Email, req.Code) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfCaptcha)
 		return
 	}
-	if !utils.CheckEmailFormat(email) {
+	if !utils.CheckEmailFormat(req.Email) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
 		return
-	} else if _, res := u.user.GetUserByEmail(ctx, email); !res {
+	} else if _, res := u.user.GetUserByEmail(ctx, req.Email); res {
 		c.JSON(http.StatusBadRequest, global.ErrorOfExistEmail)
 		return
-	} else if err := u.user.ResetEmail(ctx, user.ID, email); err != nil {
-		log.Infof("%+v\n", err)
+	} else if err := u.user.ResetEmail(ctx, user.ID, req.Email); err != nil {
+		log.WithError(err).Warnf("reset email failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	} else {
-		u.verify.DeleteCaptcha(ctx, email)
-		user.Email = email
+		u.verify.DeleteCaptcha(ctx, req.Email)
+		user.Email = req.Email
 		token, e := encryption.GenerateUserToken(user)
 		if e != nil {
-			log.Infof("%+v\n", err)
+			log.WithError(err).Warnf("get token failed")
 			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			return
 		}
 		if err = u.verify.SetToken(ctx, user.Name, token); err != nil {
-			log.Infof("%+v\n", err)
+			log.WithError(err).Warnf("set token failed")
 		}
-		c.JSON(http.StatusOK, map[string]interface{}{
-			"token": token,
-		})
+		c.JSON(http.StatusOK, map[string]interface{}{"token": token})
 	}
 }
 
@@ -180,15 +199,20 @@ func (u *UserController) Unsubscribe(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
-	user := u.auth(c)
+	req := vo.UserModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	user := u.GetAuth(c)
 	// 将email作为key从缓存中提取验证码比对
-	if code := c.Query("code"); !u.verify.VerifyEmailCaptcha(ctx, user.Email, code) {
+	if !u.verify.VerifyEmailCaptcha(ctx, user.Email, req.Code) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfCaptcha)
 		return
 	}
 	// 从数据库中删除相关信息并从磁盘删除文件
 	if err := u.user.UnsubscribeUser(ctx, user.ID, user.Storage.ID); err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("unsubscribe failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}

@@ -1,4 +1,4 @@
-package utils
+package hasher
 
 import (
 	"crypto/sha256"
@@ -7,7 +7,13 @@ import (
 	json "github.com/json-iterator/go"
 )
 
-func Hash(values ...interface{}) string {
+type sha256Hash struct{}
+
+func GetSha256() Hasher {
+	return &sha256Hash{}
+}
+
+func (s *sha256Hash) Hash(values ...interface{}) string {
 	message, _ := json.Marshal(values)
 	hash := sha256.New()
 	hash.Write(message)

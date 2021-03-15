@@ -1,9 +1,10 @@
-package config
+package pkg
 
 import (
 	"fmt"
 	"time"
 
+	"airbox/config"
 	"airbox/model/do"
 
 	"gorm.io/driver/mysql"
@@ -22,10 +23,10 @@ func GetDB() *gorm.DB {
 func InitializeDB() error {
 	var err error
 	db, err = gorm.Open(mysql.Open(fmt.Sprintf("%s:%s@(%s)/%s?charset=utf8mb4&loc=Local&parseTime=true",
-		GetConfig().MySQL.Username,
-		GetConfig().MySQL.Password,
-		GetConfig().MySQL.Host,
-		GetConfig().MySQL.Database)), &gorm.Config{
+		config.GetConfig().MySQL.Username,
+		config.GetConfig().MySQL.Password,
+		config.GetConfig().MySQL.Host,
+		config.GetConfig().MySQL.Database)), &gorm.Config{
 		SkipDefaultTransaction: true,
 		NamingStrategy:         schema.NamingStrategy{SingularTable: true},
 		Logger:                 log.Default,

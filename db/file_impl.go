@@ -45,8 +45,11 @@ func (f *FileDaoImpl) UpdateFile(ctx context.Context, id string, file map[string
 // SelectFileByID 根据文件ID获得文件
 func (f *FileDaoImpl) SelectFileByID(ctx context.Context, id string) (*do.File, error) {
 	file := &do.File{}
-	err := f.db.WithContext(ctx).Preload("FileInfo").Where("id = ?", id).Order("id").Limit(1).Find(file).Error
-	return file, err
+	res := f.db.WithContext(ctx).Preload("FileInfo").Where("id = ?", id).Order("id").Limit(1).Find(file)
+	if res.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return file, res.Error
 }
 
 // SelectFileByStorageID 获取在数据仓库Sid下的文件

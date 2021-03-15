@@ -3,6 +3,7 @@ package logger
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"airbox/global"
 
@@ -13,6 +14,9 @@ import (
 var logger *zap.Logger
 
 func InitializeLogger() {
+	if _, err := os.Create(global.LogPath); err != nil {
+		panic(fmt.Sprintf("log 初始化失败: %v", err))
+	}
 	cfg := zap.Config{
 		Level:       zap.NewAtomicLevelAt(zap.DebugLevel),
 		Development: true,
@@ -30,8 +34,8 @@ func InitializeLogger() {
 			EncodeDuration: zapcore.MillisDurationEncoder,
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 		},
-		OutputPaths:      []string{"stdout", "/log/zap.log"},
-		ErrorOutputPaths: []string{"stderr", "/log/zap.log"},
+		OutputPaths:      []string{"stdout", global.LogPath},
+		ErrorOutputPaths: []string{"stderr", global.LogPath},
 	}
 	var err error
 	logger, err = cfg.Build()

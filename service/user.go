@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/minio/minio-go/v7"
@@ -14,7 +15,7 @@ import (
 	"airbox/db/base"
 	"airbox/logger"
 	"airbox/model/do"
-	"airbox/utils"
+	"airbox/utils/hasher"
 )
 
 type UserService struct {
@@ -31,9 +32,9 @@ var (
 func GetUserService() *UserService {
 	userServiceOnce.Do(func() {
 		userService = &UserService{
-			file:    db.GetFileDao(config.GetDB()),
-			user:    db.GetUserDao(config.GetDB()),
-			storage: db.GetStorageDao(config.GetDB()),
+			file:    db.GetFileDao(pkg.GetDB()),
+			user:    db.GetUserDao(pkg.GetDB()),
+			storage: db.GetStorageDao(pkg.GetDB()),
 		}
 	})
 	return userService
@@ -96,17 +97,17 @@ func (u *UserService) Registry(ctx context.Context, username string, password st
 		Password: password,
 		Email:    email,
 	}
-	err := config.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := u.user.InsertUser(ctx, tx, user); err != nil {
 			log.WithError(err).Warnf("save user: %+v failed", user)
 			return err
 		}
-		storage := &do.Storage{UserID: user.ID, BucketName: utils.Hash(user.ID, username)}
+		storage := &do.Storage{UserID: user.ID, BucketName: fmt.Sprintf("bucket-%v", hasher.GetMD5().Hash(user.ID, username))}
 		if err := u.storage.InsertStorage(ctx, tx, storage); err != nil {
 			log.WithError(err).Warnf("save storage: %+v failed", storage)
 			return err
 		}
-		if err := config.GetOSS().MakeBucket(ctx, storage.BucketName, minio.MakeBucketOptions{}); err != nil {
+		if err := pkg.GetOSS().MakeBucket(ctx, storage.BucketName, minio.MakeBucketOptions{}); err != nil {
 			log.WithError(err).Warnf("make bucket is oss: %v failed", storage.BucketName)
 			return err
 		}
@@ -149,7 +150,7 @@ func (u *UserService) ResetEmail(ctx context.Context, id, email string) error {
 // UnsubscribeUser 注销用户，删除数据仓库内所有文件以及文件夹
 func (u *UserService) UnsubscribeUser(ctx context.Context, id, sid string) error {
 	log := logger.GetLogger(ctx, "UnsubscribeUser")
-	err := config.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := u.user.DeleteUserByID(ctx, tx, id); err != nil {
 			log.WithError(err).Warnf("delete user: %v failed", id)
 			return err

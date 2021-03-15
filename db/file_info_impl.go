@@ -15,10 +15,12 @@ type FileInfoDaoImpl struct {
 	db *gorm.DB
 }
 
+// InsertFileInfo 新增文件信息
 func (f *FileInfoDaoImpl) InsertFileInfo(ctx context.Context, info *do.FileInfo) error {
 	return f.db.WithContext(ctx).Create(info).Error
 }
 
+// DeleteFileInfo 根据文件信息ID删除文件信息
 func (f *FileInfoDaoImpl) DeleteFileInfo(ctx context.Context, tx *gorm.DB, id string) error {
 	if tx == nil {
 		tx = f.db.WithContext(ctx)
@@ -26,6 +28,7 @@ func (f *FileInfoDaoImpl) DeleteFileInfo(ctx context.Context, tx *gorm.DB, id st
 	return tx.Delete(&do.FileInfo{}, "id = ?", id).Error
 }
 
+// UpdateFileInfo 更新文件信息
 func (f *FileInfoDaoImpl) UpdateFileInfo(ctx context.Context, tx *gorm.DB, id string, delta int64) error {
 	if tx == nil {
 		tx = f.db.WithContext(ctx)
@@ -33,12 +36,14 @@ func (f *FileInfoDaoImpl) UpdateFileInfo(ctx context.Context, tx *gorm.DB, id st
 	return tx.Model(&do.FileInfo{}).Where("file_info_id = ?", id).UpdateColumn("link", gorm.Expr("link + ?", delta)).Error
 }
 
+// SelectFileInfoByID 根据文件ID获得文件信息
 func (f *FileInfoDaoImpl) SelectFileInfoByID(ctx context.Context, id string) (*do.FileInfo, error) {
 	info := &do.FileInfo{}
 	err := f.db.WithContext(ctx).Find(info, "id = ?", id).Error
 	return info, err
 }
 
+// SelectFileInfoByHash 根据Hash获得文件信息
 func (f *FileInfoDaoImpl) SelectFileInfoByHash(ctx context.Context, hash string) (*do.FileInfo, error) {
 	info := &do.FileInfo{}
 	err := f.db.WithContext(ctx).Find(info, "hash = ?", hash).Error

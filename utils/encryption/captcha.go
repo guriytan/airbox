@@ -1,6 +1,9 @@
 package encryption
 
-import "math/rand"
+import (
+	"math/rand"
+	"time"
+)
 
 const (
 	// CaptchaNumber iota means the Captcha has three type of char
@@ -18,15 +21,16 @@ const (
 
 // GetEmailCaptcha provides to the register, update email and reset password
 func GetEmailCaptcha() string {
+	var source = rand.New(rand.NewSource(time.Now().UnixNano()))
 	captcha := make([]byte, CaptchaLength)
 	for i := 0; i < CaptchaLength; i++ {
-		switch rand.Intn(CaptchaType) {
+		switch source.Intn(CaptchaType) {
 		case CaptchaNumber:
-			captcha[i] = byte(rand.Intn(10) + 48)
+			captcha[i] = byte(source.Intn(10) + 48)
 		case CaptchaUppercase:
-			captcha[i] = byte(rand.Intn(26) + 65)
+			captcha[i] = byte(source.Intn(26) + 65)
 		case CaptchaLowercase:
-			captcha[i] = byte(rand.Intn(26) + 97)
+			captcha[i] = byte(source.Intn(26) + 97)
 		}
 	}
 	return string(captcha)

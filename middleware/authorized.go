@@ -13,13 +13,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var verify = service.GetAuthService()
-
 // Login 拦截请求是否有权限
 func Login(c *gin.Context) {
 	log := logger.GetLogger(c, "Login")
 	token := c.GetHeader("Authorization")
-	if token == "" {
+	if len(token) == 0 {
 		cookie, err := c.Cookie("air_box_token")
 		if err != nil {
 			c.JSON(http.StatusForbidden, global.ErrorWithoutToken)
@@ -36,7 +34,7 @@ func Login(c *gin.Context) {
 	}
 	// 解析token获得claims对象后，取claims的username作为key从redis中获取token，若token不一致则认为该用户在其他设备登录
 	// 因此需要重新登录
-	if !verify.VerifyToken(c, claims.Name, token) {
+	if !service.GetAuthService().VerifyToken(c, claims.Name, token) {
 		c.JSON(http.StatusUnauthorized, global.ErrorSSO)
 		return
 	}
@@ -45,7 +43,7 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
 		return
 	}
-	c.Set("Authorization", claims)
+	c.Set("Authorization", &claims)
 
 	c.Next()
 }

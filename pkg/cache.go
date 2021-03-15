@@ -1,10 +1,12 @@
-package config
+package pkg
 
 import (
 	"fmt"
 	"time"
 
 	"github.com/go-redis/redis"
+
+	"airbox/config"
 )
 
 var redisCache *redis.Client
@@ -12,8 +14,8 @@ var redisCache *redis.Client
 // InitializeCache 用于Redis初始化
 func InitializeCache() error {
 	redisCache = redis.NewClient(&redis.Options{
-		Addr:         GetConfig().Redis.Host,
-		Password:     GetConfig().Redis.Password,
+		Addr:         config.GetConfig().Redis.Host,
+		Password:     config.GetConfig().Redis.Password,
 		MinIdleConns: 5,
 		PoolSize:     20,
 		IdleTimeout:  300 * time.Millisecond,

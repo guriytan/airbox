@@ -5,7 +5,16 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"airbox/global"
 )
+
+func IsDev(ctx context.Context) bool {
+	if dev, ok := ctx.Value(global.KeyDev).(string); ok && dev == "true" {
+		return true
+	}
+	return false
+}
 
 func CopyCtx(c *gin.Context) context.Context {
 	ctx := &commonCtx{values: map[string]interface{}{}}

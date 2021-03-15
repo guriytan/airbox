@@ -2,10 +2,11 @@ package controller
 
 import (
 	"net/http"
-	"strconv"
+	"sync"
 
 	"airbox/global"
 	"airbox/logger"
+	"airbox/model/vo"
 	"airbox/service"
 	"airbox/utils"
 	"airbox/utils/encryption"
@@ -19,111 +20,113 @@ type InfoController struct {
 	user *service.UserService
 }
 
-var info *InfoController
+var (
+	info     *InfoController
+	infoOnce sync.Once
+)
 
 func GetInfoController() *InfoController {
-	if info == nil {
+	infoOnce.Do(func() {
 		info = &InfoController{
 			BaseController: getBaseController(),
 			file:           service.GetFileService(),
 			user:           service.GetUserService(),
 		}
-	}
+	})
 	return info
 }
 
 // ListFile 显示文件和文件夹列表
-func (info *InfoController) ListFile(c *gin.Context) {
+func (i *InfoController) ListFile(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ListFile")
-	data := make(map[string]interface{})
-	if fid := c.Query("fid"); fid != "" {
-		files, err := info.file.SelectFileByFatherID(ctx, fid)
-		if err != nil {
-			log.Infof("%+v\n", err)
-			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-			return
-		}
-		data["files"] = files
-	} else {
-		sid := info.auth(c).Storage.ID
-		files, err := info.file.GetFileByStorageID(ctx, sid)
-		if err != nil {
-			log.Infof("%+v\n", err)
-			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-			return
-		}
-		data["files"] = files
+	req := vo.FileModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
 	}
-	c.JSON(http.StatusOK, data)
+	fatherID := global.DefaultFatherID
+	if len(req.FatherID) != 0 {
+		fatherID = req.FatherID
+	}
+	files, err := i.file.SelectFileByFatherID(ctx, fatherID)
+	if err != nil {
+		log.WithError(err).Warnf("get file by father_id failed")
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
+	}
+	c.JSON(http.StatusOK, map[string]interface{}{"file": files})
 }
 
 // UserInfo 显示用户及相关信息
-func (info *InfoController) UserInfo(c *gin.Context) {
+func (i *InfoController) UserInfo(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "UserInfo")
-	data := make(map[string]interface{})
-	user, err := info.user.GetUserByID(ctx, info.auth(c).ID)
+
+	user, err := i.user.GetUserByID(ctx, i.GetAuth(c).ID)
 	if err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("get user by id failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	count, err := info.file.SelectFileTypeCount(ctx, user.Storage.ID)
+	count, err := i.file.SelectFileTypeCount(ctx, user.Storage.ID)
 	if err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("get file statistics failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	data["info"] = user
-	data["count"] = count
-	c.JSON(http.StatusOK, data)
+	c.JSON(http.StatusOK, map[string]interface{}{"i": user, "count": count})
 }
 
 // ListType 显示对应类型的文件
-func (info *InfoController) ListType(c *gin.Context) {
+func (i *InfoController) ListType(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ListType")
-	query := c.Query("type")
-	fileType, _ := strconv.ParseInt(query, 10, 64)
-	files, err := info.file.GetFileByType(ctx, int(fileType))
+	req := vo.TypeModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	files, err := i.file.GetFileByType(ctx, int(req.Type))
 	if err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("get file by type failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	c.JSON(http.StatusOK, map[string]interface{}{
-		"files": files,
-	})
+	c.JSON(http.StatusOK, map[string]interface{}{"files": files})
 }
 
 // ShareFile 分享文件
-func (info *InfoController) ShareFile(c *gin.Context) {
+func (i *InfoController) ShareFile(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "ShareFile")
-	token := c.PostForm("link")
-	if token == "" {
+	req := vo.ShareModel{}
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(req.Link) == 0 {
 		c.JSON(http.StatusForbidden, global.ErrorWithoutToken)
 		return
 	}
-	fileID, exp, err := encryption.ParseShareToken(token)
+	fileID, exp, err := encryption.ParseShareToken(req.Link)
 	if err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("parse token failed")
 		c.JSON(http.StatusForbidden, global.ErrorOfWrongToken)
 		return
 	} else if exp < utils.Epoch() {
 		c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
 		return
 	}
-	fileByID, err := info.file.GetFileByID(ctx, fileID)
+	fileByID, err := i.file.GetFileByID(ctx, fileID)
 	if err != nil {
-		log.Infof("%+v\n", err)
+		log.WithError(err).Warnf("get file by id failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	info.downloadFile(c, fileByID)
+	i.DownloadFile(c, fileByID)
 }

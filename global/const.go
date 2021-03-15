@@ -1,8 +1,11 @@
 package global
 
 import (
-	"os"
 	"time"
+)
+
+const (
+	LogPath = "./output.log"
 )
 
 const (
@@ -16,7 +19,7 @@ const (
 type FileType int
 
 const (
-	FileFolderType = iota
+	FileFolderType FileType = iota
 	FileMusicType
 	FileVideoType
 	FileDocumentType
@@ -36,6 +39,7 @@ const (
 
 // 常用错误状态返回信息
 const (
+	ErrorParam              = "参数错误"
 	ErrorOutOfDated         = "登录信息已过期"
 	ErrorWithoutToken       = "用户未登录"
 	ErrorSSO                = "用户已在其他设备登录"
@@ -61,12 +65,6 @@ const (
 	ErrorDownloadFile       = "下载文件失败"
 )
 
-// 文件上传相关配置
-const (
-	FileTempSuffix = ".temp"           // Temp file suffix
-	FilePermMode   = os.FileMode(0666) // Default file permission
-)
-
 // token及code的过期时间
 const (
 	TokenUserExpiration  = 6 * time.Hour    // User Token expiration Period, represented in second
@@ -79,6 +77,7 @@ const (
 	KeyInternal = "::"
 	KeyCaptcha  = "KEY_REDIS_CAPTCHA" + KeyInternal
 	KeyToken    = "KEY_REDIS_TOKEN" + KeyInternal
+	KeyDev      = "Box-Dev"
 )
 
 // token密钥
@@ -86,4 +85,12 @@ var (
 	SecretKeyUser  = []byte("TOq89fQY4tp29J4g") // The key required for the user token
 	SecretKeyEmail = []byte("12H4ywQr8f2hD023") // The key required to reset password
 	SecretKeyFile  = []byte("049fhAwf592hOc42") // The key required to share file
+)
+
+type OperationType int
+
+const (
+	OperationTypeRename OperationType = 1
+	OperationTypeCopy   OperationType = 2
+	OperationTypeMove   OperationType = 3
 )
