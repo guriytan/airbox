@@ -7,6 +7,7 @@ import (
 	"airbox/cache"
 	"airbox/config"
 	"airbox/logger"
+	"airbox/pkg"
 	"airbox/utils/encryption"
 )
 
@@ -71,7 +72,7 @@ func (c *AuthService) SendResetLink(ctx context.Context, id, email string) error
 		log.WithError(err).Warnf("generate email token: %v failed", id)
 		return err
 	}
-	link := pkg.GetConfig().Web.Site + "/reset/" + captcha
+	link := config.GetConfig().Web.Site + "/reset/" + captcha
 	if err := SendResetLink(ctx, email, link); err != nil {
 		log.WithError(err).Warnf("send token: %v to email: %v failed", captcha, email)
 		return err

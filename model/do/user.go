@@ -15,12 +15,12 @@ var (
 
 type User struct {
 	Model
-	Name     string `gorm:"type:varchar(20);uniqueIndex"` // 用户名
-	Password string `gorm:"type:varchar(80);index"`       // 密码
-	Hash     string `gorm:"type:char(64);index"`
-	Email    string `gorm:"type:varchar(50);uniqueIndex"` // 邮箱
+	Name     string `gorm:"type:varchar(20);uniqueIndex" json:"name"`  // 用户名
+	Password string `gorm:"type:varchar(80);index" json:"password"`    // 密码
+	Hash     string `gorm:"type:char(64);index" json:"hash"`           // 密码Hash
+	Email    string `gorm:"type:varchar(50);uniqueIndex" json:"email"` // 邮箱
 
-	Storage Storage // 对应数据仓库
+	Storage Storage `json:"storage"` // 对应数据仓库
 }
 
 func (user *User) BeforeCreate(tx *gorm.DB) error {

@@ -5,6 +5,7 @@ import (
 
 	"airbox/config"
 	"airbox/logger"
+	"airbox/pkg"
 )
 
 func main() {
@@ -14,7 +15,7 @@ func main() {
 	defer logger.CloseLogger()
 
 	log := logger.GetLogger(ctx, "main")
-	if err := pkg.LoadConfig(); err != nil {
+	if err := config.LoadConfig(); err != nil {
 		log.Errorf("初始化config失败: %v", err)
 		return
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"airbox/config"
+	"airbox/pkg"
 	"airbox/utils"
 
 	"gopkg.in/gomail.v2"
@@ -15,7 +16,7 @@ func SendCaptcha(ctx context.Context, email, captcha string) error {
 		return nil
 	}
 	m := gomail.NewMessage()
-	m.SetHeader("From", pkg.GetConfig().Mail.Username)
+	m.SetHeader("From", config.GetConfig().Mail.Username)
 	m.SetHeader("To", email)
 	m.SetHeader("Subject", "来自AirBox的邮件提醒！")
 	body := "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n" +
@@ -65,7 +66,7 @@ func SendResetLink(ctx context.Context, email, link string) error {
 		return nil
 	}
 	m := gomail.NewMessage()
-	m.SetHeader("From", pkg.GetConfig().Mail.Username)
+	m.SetHeader("From", config.GetConfig().Mail.Username)
 	m.SetHeader("To", email)
 	m.SetHeader("Subject", "来自AirBox的重置密码申请！")
 	content := "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n" +

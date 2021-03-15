@@ -7,17 +7,16 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/minio/minio-go/v7"
-
-	"airbox/config"
 	"airbox/db"
 	"airbox/db/base"
 	"airbox/global"
 	"airbox/logger"
 	"airbox/model/do"
+	"airbox/pkg"
 	"airbox/utils"
 	"airbox/utils/hasher"
 
+	"github.com/minio/minio-go/v7"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
@@ -53,17 +52,6 @@ func (f *FileService) GetFileByID(ctx context.Context, id string) (*do.File, err
 		return nil, err
 	}
 	return fileByID, nil
-}
-
-// GetFileByStorageID 获取在仓库Sid下的文件，一般用于初始显示
-func (f *FileService) GetFileByStorageID(ctx context.Context, sid string) ([]*do.File, error) {
-	log := logger.GetLogger(ctx, "GetFileByStorageID")
-	byStorageID, err := f.file.SelectFileByStorageID(ctx, sid)
-	if err != nil {
-		log.WithError(err).Infof("get file by storage id: %v failed", sid)
-		return nil, err
-	}
-	return byStorageID, nil
 }
 
 // SelectFileByFatherID 获取在父节点fid下的文件

@@ -45,7 +45,7 @@ func (u *UserController) Register(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "Register")
-	if !pkg.GetConfig().Register {
+	if !config.GetConfig().Register {
 		c.JSON(http.StatusBadRequest, global.ErrorOfForbidRegister)
 		return
 	}
@@ -110,15 +110,15 @@ func (u *UserController) ResetPwd(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
 		return
 	}
-	if user, err := u.user.GetUserByID(ctx, id); err != nil {
+	if userInfo, errG := u.user.GetUserByID(ctx, id); errG != nil {
 		c.JSON(http.StatusBadRequest, global.ErrorOfExpectedLink)
 		return
-	} else if user.Password == password {
+	} else if userInfo.Password == password {
 		c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 		return
 	}
-	if err := u.user.ResetPwd(ctx, id, password); err != nil {
-		log.WithError(err).Warnf("reset password failed")
+	if errR := u.user.ResetPwd(ctx, id, password); errR != nil {
+		log.WithError(errR).Warnf("reset password failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
@@ -136,15 +136,15 @@ func (u *UserController) ResetPwdByOrigin(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	user := u.GetAuth(c)
-	if user.Password != encryption.EncryptPassword(req.Origin) {
+	userInfo := u.GetAuth(c)
+	if userInfo.Password != encryption.EncryptPassword(req.Origin) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfWrongPassword)
 		return
 	} else if req.Origin == req.Reset {
 		c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 		return
 	}
-	if err := u.user.ResetPwd(ctx, user.ID, req.Reset); err != nil {
+	if err := u.user.ResetPwd(ctx, userInfo.ID, req.Reset); err != nil {
 		log.WithError(err).Warnf("reset password failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
@@ -163,7 +163,7 @@ func (u *UserController) ResetEmail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	user := u.GetAuth(c)
+	userInfo := u.GetAuth(c)
 	// 将email作为key从缓存中提取验证码比对
 	if !u.verify.VerifyEmailCaptcha(ctx, req.Email, req.Code) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfCaptcha)
@@ -175,19 +175,19 @@ func (u *UserController) ResetEmail(c *gin.Context) {
 	} else if _, res := u.user.GetUserByEmail(ctx, req.Email); res {
 		c.JSON(http.StatusBadRequest, global.ErrorOfExistEmail)
 		return
-	} else if err := u.user.ResetEmail(ctx, user.ID, req.Email); err != nil {
+	} else if err := u.user.ResetEmail(ctx, userInfo.ID, req.Email); err != nil {
 		log.WithError(err).Warnf("reset email failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	} else {
 		u.verify.DeleteCaptcha(ctx, req.Email)
-		user.Email = req.Email
-		token, e := encryption.GenerateUserToken(user)
+		userInfo.Email = req.Email
+		token, e := encryption.GenerateUserToken(userInfo)
 		if e != nil {
 			log.WithError(err).Warnf("get token failed")
 			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			return
 		}
-		if err = u.verify.SetToken(ctx, user.Name, token); err != nil {
+		if err = u.verify.SetToken(ctx, userInfo.Name, token); err != nil {
 			log.WithError(err).Warnf("set token failed")
 		}
 		c.JSON(http.StatusOK, map[string]interface{}{"token": token})
@@ -204,14 +204,14 @@ func (u *UserController) Unsubscribe(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	user := u.GetAuth(c)
+	userInfo := u.GetAuth(c)
 	// 将email作为key从缓存中提取验证码比对
-	if !u.verify.VerifyEmailCaptcha(ctx, user.Email, req.Code) {
+	if !u.verify.VerifyEmailCaptcha(ctx, userInfo.Email, req.Code) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfCaptcha)
 		return
 	}
 	// 从数据库中删除相关信息并从磁盘删除文件
-	if err := u.user.UnsubscribeUser(ctx, user.ID, user.Storage.ID); err != nil {
+	if err := u.user.UnsubscribeUser(ctx, userInfo.ID, userInfo.Storage.ID); err != nil {
 		log.WithError(err).Warnf("unsubscribe failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return

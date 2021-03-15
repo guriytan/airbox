@@ -62,17 +62,17 @@ func (auth *AuthController) LoginToken(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfPassword)
 		return
 	}
-	if user, err := auth.user.Login(ctx, req.UserKey, req.Password); err != nil {
+	if userInfo, err := auth.user.Login(ctx, req.UserKey, req.Password); err != nil {
 		log.WithError(err).Warnf("login failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 	} else {
-		token, e := encryption.GenerateUserToken(user)
+		token, e := encryption.GenerateUserToken(userInfo)
 		if e != nil {
 			log.WithError(err).Warnf("get token failed")
 			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			return
 		}
-		if err = auth.verify.SetToken(ctx, user.Name, token); err != nil {
+		if err = auth.verify.SetToken(ctx, userInfo.Name, token); err != nil {
 			log.WithError(err).Warnf("set token failed")
 		}
 		c.JSON(http.StatusOK, map[string]interface{}{"token": token})
@@ -128,7 +128,7 @@ func (auth *AuthController) RegisterCode(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "RegisterCode")
-	if !pkg.GetConfig().Register {
+	if !config.GetConfig().Register {
 		c.JSON(http.StatusBadRequest, global.ErrorOfForbidRegister)
 		return
 	}
@@ -175,7 +175,7 @@ func (auth *AuthController) PasswordCode(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	var user *do.User
+	var userInfo *do.User
 	var res bool
 	if !utils.CheckEmailFormat(req.UserKey) {
 		// 用户输入用户名进行登录，判断用户名长度
@@ -184,20 +184,20 @@ func (auth *AuthController) PasswordCode(c *gin.Context) {
 			return
 		}
 		// 从数据库获取用户的邮箱
-		user, res = auth.user.GetUserByUsername(ctx, req.UserKey)
+		userInfo, res = auth.user.GetUserByUsername(ctx, req.UserKey)
 		if res {
 			c.Status(http.StatusOK)
 			return
 		}
-		req.UserKey = user.Email
-	} else if user, res = auth.user.GetUserByEmail(ctx, req.UserKey); res {
+		req.UserKey = userInfo.Email
+	} else if userInfo, res = auth.user.GetUserByEmail(ctx, req.UserKey); res {
 		// 当输入为邮箱时，检查邮箱是否存在
 		c.Status(http.StatusOK)
 		return
 	}
 	// 发送验证码至邮箱
 	go func() {
-		if err := auth.verify.SendResetLink(ctx, user.ID, req.UserKey); err != nil {
+		if err := auth.verify.SendResetLink(ctx, userInfo.ID, req.UserKey); err != nil {
 			log.WithError(err).Warnf("send reset link failed")
 		}
 	}()
@@ -215,8 +215,8 @@ func (auth *AuthController) EmailCode(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	user := auth.GetAuth(c)
-	if user.Password != req.Password {
+	userInfo := auth.GetAuth(c)
+	if userInfo.Password != req.Password {
 		c.JSON(http.StatusBadRequest, global.ErrorOfWrongPassword)
 		return
 	}
@@ -224,7 +224,7 @@ func (auth *AuthController) EmailCode(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
 		return
 	}
-	if user.Email == req.Email {
+	if userInfo.Email == req.Email {
 		c.JSON(http.StatusBadRequest, global.ErrorOfSameEmail)
 		return
 	}

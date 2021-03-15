@@ -45,17 +45,11 @@ func (f *FileDaoImpl) UpdateFile(ctx context.Context, id string, file map[string
 // SelectFileByID 根据文件ID获得文件
 func (f *FileDaoImpl) SelectFileByID(ctx context.Context, id string) (*do.File, error) {
 	file := &do.File{}
-	res := f.db.WithContext(ctx).Preload("FileInfo").Where("id = ?", id).Order("id").Limit(1).Find(file)
+	res := f.db.WithContext(ctx).Preload("FileInfo").Where("id = ?", id).Find(file)
 	if res.RowsAffected == 0 {
 		return nil, gorm.ErrRecordNotFound
 	}
 	return file, res.Error
-}
-
-// SelectFileByStorageID 获取在数据仓库Sid下的文件
-func (f *FileDaoImpl) SelectFileByStorageID(ctx context.Context, storageID string) (files []*do.File, err error) {
-	err = f.db.WithContext(ctx).Preload("FileInfo").Where("storage_id = ? and father_id = ?", storageID, global.DefaultFatherID).Order("created_at desc").Find(&files).Error
-	return
 }
 
 // SelectFileByFatherID 根据文件夹ID获得文件
@@ -87,8 +81,11 @@ func (f *FileDaoImpl) SelectFileByName(ctx context.Context, name, storageID, fat
 
 // SelectFileTypeCount 获取文件类型的统计数据
 func (f *FileDaoImpl) SelectFileTypeCount(ctx context.Context, storageID string) (types []*do.Statistics, err error) {
-	err = f.db.WithContext(ctx).Model(&do.File{}).Select("type, count(*) as count").Where("deleted_at = 0 and storage_id = ?", storageID).
-		Group("type").Scan(&types).Error
+	err = f.db.WithContext(ctx).Model(&do.File{}).
+		Select("type, count(*) as count").
+		Where("deleted_at = 0 and storage_id = ?", storageID).
+		Group("type").
+		Scan(&types).Error
 	return
 }
 

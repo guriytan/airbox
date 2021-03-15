@@ -33,7 +33,7 @@ func (f *FileInfoDaoImpl) UpdateFileInfo(ctx context.Context, tx *gorm.DB, id st
 	if tx == nil {
 		tx = f.db.WithContext(ctx)
 	}
-	return tx.Model(&do.FileInfo{}).Where("file_info_id = ?", id).UpdateColumn("link", gorm.Expr("link + ?", delta)).Error
+	return tx.Model(&do.FileInfo{}).Where("id = ?", id).UpdateColumn("link", gorm.Expr("link + ?", delta)).Error
 }
 
 // SelectFileInfoByID 根据文件ID获得文件信息

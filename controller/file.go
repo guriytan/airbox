@@ -54,14 +54,14 @@ func (f *FileController) UploadFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 		return
 	}
-	user, err := f.user.GetUserByID(ctx, f.GetAuth(c).ID)
+	userInfo, err := f.user.GetUserByID(ctx, f.GetAuth(c).ID)
 	if err != nil {
 		log.WithError(err).Warnf("get user failed")
 		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 		return
 	}
 	// 判断仓库的剩余容量是否足以存放该文件
-	if user.Storage.CurrentSize+req.Size >= user.Storage.MaxSize {
+	if userInfo.Storage.CurrentSize+req.Size >= userInfo.Storage.MaxSize {
 		c.JSON(http.StatusBadRequest, global.ErrorOutOfSpace)
 		return
 	}
@@ -92,13 +92,13 @@ func (f *FileController) UploadFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	file, err := f.file.StoreFile(ctx, fileByHash, user.Storage.ID, req.FatherID)
+	fileList, err := f.file.StoreFile(ctx, fileByHash, userInfo.Storage.ID, req.FatherID)
 	if err != nil {
 		log.WithError(err).Warnf("store file failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	c.JSON(http.StatusOK, map[string]interface{}{"file": file})
+	c.JSON(http.StatusOK, map[string]interface{}{"file": fileList})
 }
 
 // DownloadFile 文件下载
@@ -107,7 +107,7 @@ func (f *FileController) DownloadFile(c *gin.Context) {
 
 	log := logger.GetLogger(ctx, "DownloadFile")
 	req := vo.FileModel{}
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BindUri(&req); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -127,7 +127,7 @@ func (f *FileController) DeleteFile(c *gin.Context) {
 
 	log := logger.GetLogger(ctx, "Delete")
 	req := vo.FileModel{}
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BindUri(&req); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}

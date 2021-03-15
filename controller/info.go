@@ -65,19 +65,19 @@ func (i *InfoController) UserInfo(c *gin.Context) {
 
 	log := logger.GetLogger(ctx, "UserInfo")
 
-	user, err := i.user.GetUserByID(ctx, i.GetAuth(c).ID)
+	userInfo, err := i.user.GetUserByID(ctx, i.GetAuth(c).ID)
 	if err != nil {
 		log.WithError(err).Warnf("get user by id failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	count, err := i.file.SelectFileTypeCount(ctx, user.Storage.ID)
+	count, err := i.file.SelectFileTypeCount(ctx, userInfo.Storage.ID)
 	if err != nil {
 		log.WithError(err).Warnf("get file statistics failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	c.JSON(http.StatusOK, map[string]interface{}{"i": user, "count": count})
+	c.JSON(http.StatusOK, map[string]interface{}{"userInfo": userInfo, "count": count})
 }
 
 // ListType 显示对应类型的文件

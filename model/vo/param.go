@@ -34,7 +34,7 @@ type ResetEmailModel struct {
 }
 
 type FileModel struct {
-	FileID   string `json:"file_id" form:"file_id"`
+	FileID   string `json:"file_id" form:"file_id" uri:"file_id"`
 	Name     string `json:"name" form:"name"`
 	FatherID string `json:"father_id" form:"father_id"`
 	Size     int64  `json:"size" form:"size"`

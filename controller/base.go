@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"airbox/config"
 	"airbox/global"
 	"airbox/logger"
 	"airbox/model/do"
+	"airbox/pkg"
 	"airbox/utils"
 
 	"github.com/gin-gonic/gin"
@@ -25,9 +25,9 @@ func getBaseController() BaseController {
 
 // GetAuth verify return the authority of request
 func (*BaseController) GetAuth(c *gin.Context) *do.User {
-	user, ok := c.Get("Authorization")
+	userInfo, ok := c.Get("Authorization")
 	if ok {
-		return user.(*do.User)
+		return userInfo.(*do.User)
 	}
 	return nil
 }

@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/minio/minio-go/v7"
-	"github.com/pkg/errors"
-
-	"gorm.io/gorm"
-
-	"airbox/config"
 	"airbox/db"
 	"airbox/db/base"
 	"airbox/logger"
 	"airbox/model/do"
+	"airbox/pkg"
 	"airbox/utils/hasher"
+
+	"github.com/minio/minio-go/v7"
+	"github.com/pkg/errors"
+	"gorm.io/gorm"
 )
 
 type UserService struct {
