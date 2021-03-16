@@ -51,11 +51,11 @@ func (u *UserService) Login(ctx context.Context, user, password string) (*do.Use
 }
 
 // GetUserByID 由于从token解析得到的user信息并不是实时的，因此这里提供实时的获取用户信息供显示容量
-func (u *UserService) GetUserByID(ctx context.Context, id string) (*do.User, error) {
+func (u *UserService) GetUserByID(ctx context.Context, userID string) (*do.User, error) {
 	log := logger.GetLogger(ctx, "GetUserByID")
-	byID, err := u.user.SelectUserByID(ctx, id)
+	byID, err := u.user.SelectUserByID(ctx, userID)
 	if err != nil {
-		log.WithError(err).Warnf("get user info by id: %v failed", id)
+		log.WithError(err).Warnf("get user info by id: %v failed", userID)
 		return nil, err
 	}
 	return byID, nil
@@ -121,45 +121,45 @@ func (u *UserService) Registry(ctx context.Context, username string, password st
 }
 
 // 修改Pwd 重置密码
-func (u *UserService) ResetPwd(ctx context.Context, id, password string) error {
+func (u *UserService) ResetPwd(ctx context.Context, userID, password string) error {
 	log := logger.GetLogger(ctx, "ResetPwd")
 	if err := u.user.UpdateUser(ctx, &do.User{
-		Model:    do.Model{ID: id},
+		Model:    do.Model{ID: userID},
 		Password: password,
 	}); err != nil {
-		log.WithError(err).Warnf("update user: %v password: %v failed", id, password)
+		log.WithError(err).Warnf("update user: %v password: %v failed", userID, password)
 		return err
 	}
 	return nil
 }
 
 // ResetEmail 修改邮箱
-func (u *UserService) ResetEmail(ctx context.Context, id, email string) error {
+func (u *UserService) ResetEmail(ctx context.Context, userID, email string) error {
 	log := logger.GetLogger(ctx, "ResetEmail")
 	if err := u.user.UpdateUser(ctx, &do.User{
-		Model: do.Model{ID: id},
+		Model: do.Model{ID: userID},
 		Email: email,
 	}); err != nil {
-		log.WithError(err).Warnf("update user: %v email: %v failed", id, email)
+		log.WithError(err).Warnf("update user: %v email: %v failed", userID, email)
 		return err
 	}
 	return nil
 }
 
 // UnsubscribeUser 注销用户，删除数据仓库内所有文件以及文件夹
-func (u *UserService) UnsubscribeUser(ctx context.Context, id, sid string) error {
+func (u *UserService) UnsubscribeUser(ctx context.Context, userID, storageID string) error {
 	log := logger.GetLogger(ctx, "UnsubscribeUser")
 	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := u.user.DeleteUserByID(ctx, tx, id); err != nil {
-			log.WithError(err).Warnf("delete user: %v failed", id)
+		if err := u.user.DeleteUserByID(ctx, tx, userID); err != nil {
+			log.WithError(err).Warnf("delete user: %v failed", userID)
 			return err
 		}
-		if err := u.storage.DeleteStorageByID(ctx, tx, sid); err != nil {
-			log.WithError(err).Warnf("delete storage: %v failed", sid)
+		if err := u.storage.DeleteStorageByID(ctx, tx, storageID); err != nil {
+			log.WithError(err).Warnf("delete storage: %v failed", storageID)
 			return err
 		}
-		if err := u.file.DeleteFileByStorageID(ctx, tx, sid); err != nil {
-			log.WithError(err).Warnf("delete filed of storage: %v failed", sid)
+		if err := u.file.DeleteFileByStorageID(ctx, tx, storageID); err != nil {
+			log.WithError(err).Warnf("delete filed of storage: %v failed", storageID)
 			return err
 		}
 		return nil
@@ -168,6 +168,6 @@ func (u *UserService) UnsubscribeUser(ctx context.Context, id, sid string) error
 		log.WithError(err).Warn("transaction failed")
 		return err
 	}
-	log.Infof("unsubscribe user: %v success", id)
+	log.Infof("unsubscribe user: %v success", userID)
 	return nil
 }

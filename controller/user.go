@@ -96,7 +96,7 @@ func (u *UserController) ResetPwd(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	id, exp, err := encryption.ParseEmailToken(req.Token)
+	userID, exp, err := encryption.ParseEmailToken(req.Token)
 	if err != nil {
 		log.WithError(err).Warnf("parse email token failed")
 		c.JSON(http.StatusForbidden, global.ErrorOfExpectedLink)
@@ -110,14 +110,14 @@ func (u *UserController) ResetPwd(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfEmail)
 		return
 	}
-	if userInfo, errG := u.user.GetUserByID(ctx, id); errG != nil {
+	if userInfo, errG := u.user.GetUserByID(ctx, userID); errG != nil {
 		c.JSON(http.StatusBadRequest, global.ErrorOfExpectedLink)
 		return
 	} else if userInfo.Password == password {
 		c.JSON(http.StatusBadRequest, global.ErrorOfSamePassword)
 		return
 	}
-	if errR := u.user.ResetPwd(ctx, id, password); errR != nil {
+	if errR := u.user.ResetPwd(ctx, userID, password); errR != nil {
 		log.WithError(errR).Warnf("reset password failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return

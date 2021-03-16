@@ -25,8 +25,8 @@ func (f *FileDaoImpl) InsertFile(ctx context.Context, tx *gorm.DB, file *do.File
 }
 
 // DeleteFileByID 根据文件ID删除文件
-func (f *FileDaoImpl) DeleteFileByID(ctx context.Context, id string) error {
-	return f.db.WithContext(ctx).Delete(&do.File{}, "id = ?", id).Error
+func (f *FileDaoImpl) DeleteFileByID(ctx context.Context, fileID string) error {
+	return f.db.WithContext(ctx).Delete(&do.File{}, "id = ?", fileID).Error
 }
 
 // DeleteFileByStorageID 根据仓库ID删除文件
@@ -38,14 +38,14 @@ func (f *FileDaoImpl) DeleteFileByStorageID(ctx context.Context, tx *gorm.DB, st
 }
 
 // UpdateFile 更新文件信息
-func (f *FileDaoImpl) UpdateFile(ctx context.Context, id string, file map[string]interface{}) error {
-	return f.db.WithContext(ctx).Model(&do.File{}).Where("id = ?", id).Updates(file).Error
+func (f *FileDaoImpl) UpdateFile(ctx context.Context, fileID string, file map[string]interface{}) error {
+	return f.db.WithContext(ctx).Model(&do.File{}).Where("id = ?", fileID).Updates(file).Error
 }
 
 // SelectFileByID 根据文件ID获得文件
-func (f *FileDaoImpl) SelectFileByID(ctx context.Context, id string) (*do.File, error) {
+func (f *FileDaoImpl) SelectFileByID(ctx context.Context, fileID string) (*do.File, error) {
 	file := &do.File{}
-	res := f.db.WithContext(ctx).Preload("FileInfo").Where("id = ?", id).Find(file)
+	res := f.db.WithContext(ctx).Preload("FileInfo").Where("id = ?", fileID).Find(file)
 	if res.RowsAffected == 0 {
 		return nil, gorm.ErrRecordNotFound
 	}
@@ -53,8 +53,8 @@ func (f *FileDaoImpl) SelectFileByID(ctx context.Context, id string) (*do.File, 
 }
 
 // SelectFileByFatherID 根据文件夹ID获得文件
-func (f *FileDaoImpl) SelectFileByFatherID(ctx context.Context, id string) (files []*do.File, err error) {
-	err = f.db.WithContext(ctx).Preload("FileInfo").Where("father_id = ?", id).Order("created_at desc").Find(&files).Error
+func (f *FileDaoImpl) SelectFileByFatherID(ctx context.Context, fileID string) (files []*do.File, err error) {
+	err = f.db.WithContext(ctx).Preload("FileInfo").Where("father_id = ?", fileID).Order("created_at desc").Find(&files).Error
 	return
 }
 

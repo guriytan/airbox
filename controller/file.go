@@ -1,12 +1,15 @@
 package controller
 
 import (
+	"context"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"sync"
 
 	"airbox/global"
 	"airbox/logger"
+	"airbox/model/do"
 	"airbox/model/vo"
 	"airbox/service"
 	"airbox/utils"
@@ -43,15 +46,9 @@ func (f *FileController) UploadFile(c *gin.Context) {
 	ctx := utils.CopyCtx(c)
 
 	log := logger.GetLogger(ctx, "UploadFile")
-	req := vo.FileModel{}
-	if err := c.BindQuery(&req); err != nil {
+	req := &vo.FileModel{}
+	if err := c.BindQuery(req); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
-		return
-	}
-	reader, err := c.Request.MultipartReader()
-	if err != nil {
-		log.WithError(err).Warnf("get miltipart failed")
-		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 		return
 	}
 	userInfo, err := f.user.GetUserByID(ctx, f.GetAuth(c).ID)
@@ -65,40 +62,53 @@ func (f *FileController) UploadFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, global.ErrorOutOfSpace)
 		return
 	}
+	reader, err := c.Request.MultipartReader()
+	if err != nil {
+		log.WithError(err).Warnf("get miltipart failed")
+		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+		return
+	}
+	uploadFile, err := f.uploadFile(ctx, reader, req, userInfo)
+	if err != nil {
+		log.WithError(err).Warnf("upload file failed")
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
+	}
+	c.JSON(http.StatusOK, map[string]interface{}{"file": uploadFile})
+}
+
+func (f *FileController) uploadFile(ctx context.Context, reader *multipart.Reader, req *vo.FileModel, userInfo *do.User) (*do.File, error) {
+	log := logger.GetLogger(ctx, "uploadFile")
 	// 判断fid对应的文件夹是否存在
 	// 获得Reader流
 	part, err := reader.NextPart()
 	// 若读取到结尾则跳出
 	if err == io.EOF {
-		return
+		return nil, nil
 	} else if err != nil {
 		log.WithError(err).Warnf("read multipart failed")
-		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
-		return
+		return nil, err
 	}
 	defer func() { _ = part.Close() }()
 	// 查找是否存在md5相同的文件
 	fileByHash, err := f.file.SelectFileByHash(ctx, req.Hash)
 	if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && fileByHash.Size != req.Size) {
 		// 调用service方法保存文件数据
-		fileByHash, err = f.file.UploadFile(ctx, &f.GetAuth(c).Storage, part, req.Hash, req.Size)
+		fileByHash, err = f.file.UploadFile(ctx, &userInfo.Storage, part, req.Hash, req.Size)
 		if err != nil {
 			log.WithError(err).Warnf("upload file failed")
-			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-			return
+			return nil, err
 		}
 	} else if err != nil {
 		log.WithError(err).Warnf("get file by hash failed")
-		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-		return
+		return nil, err
 	}
-	fileList, err := f.file.StoreFile(ctx, fileByHash, userInfo.Storage.ID, req.FatherID)
+	fileInfo, err := f.file.StoreFile(ctx, fileByHash, userInfo.Storage.ID, req.FatherID)
 	if err != nil {
 		log.WithError(err).Warnf("store file failed")
-		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
-		return
+		return nil, err
 	}
-	c.JSON(http.StatusOK, map[string]interface{}{"file": fileList})
+	return fileInfo, nil
 }
 
 // DownloadFile 文件下载

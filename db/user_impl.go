@@ -25,11 +25,11 @@ func (u *UserDaoImpl) InsertUser(ctx context.Context, tx *gorm.DB, user *do.User
 }
 
 // DeleteUserByID 根据用户ID删除用户
-func (u *UserDaoImpl) DeleteUserByID(ctx context.Context, tx *gorm.DB, id string) error {
+func (u *UserDaoImpl) DeleteUserByID(ctx context.Context, tx *gorm.DB, userID string) error {
 	if tx == nil {
 		tx = u.db.WithContext(ctx)
 	}
-	return tx.Delete(&do.User{}, "id = ?", id).Error
+	return tx.Delete(&do.User{}, "id = ?", userID).Error
 }
 
 // UpdateUser 更新用户信息
@@ -38,9 +38,9 @@ func (u *UserDaoImpl) UpdateUser(ctx context.Context, user *do.User) error {
 }
 
 // SelectUserByID 根据用户ID获得用户
-func (u *UserDaoImpl) SelectUserByID(ctx context.Context, id string) (*do.User, error) {
+func (u *UserDaoImpl) SelectUserByID(ctx context.Context, userID string) (*do.User, error) {
 	user := &do.User{}
-	err := u.db.WithContext(ctx).Preload("Storage").Where("id = ?", id).Find(user).Error
+	err := u.db.WithContext(ctx).Preload("Storage").Where("id = ?", userID).Find(user).Error
 	return user, err
 }
 

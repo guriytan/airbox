@@ -44,22 +44,22 @@ func GetFileService() *FileService {
 }
 
 // GetFileByID 获取文件信息，用于下载
-func (f *FileService) GetFileByID(ctx context.Context, id string) (*do.File, error) {
+func (f *FileService) GetFileByID(ctx context.Context, fileID string) (*do.File, error) {
 	log := logger.GetLogger(ctx, "GetFileByID")
-	fileByID, err := f.file.SelectFileByID(ctx, id)
+	fileByID, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
-		log.WithError(err).Infof("get file by id: %v failed", id)
+		log.WithError(err).Infof("get file by id: %v failed", fileID)
 		return nil, err
 	}
 	return fileByID, nil
 }
 
 // SelectFileByFatherID 获取在父节点fid下的文件
-func (f *FileService) SelectFileByFatherID(ctx context.Context, fid string) (files []*do.File, err error) {
+func (f *FileService) SelectFileByFatherID(ctx context.Context, fatherID string) (files []*do.File, err error) {
 	log := logger.GetLogger(ctx, "SelectFileByFatherID")
-	byFolderID, err := f.file.SelectFileByFatherID(ctx, fid)
+	byFolderID, err := f.file.SelectFileByFatherID(ctx, fatherID)
 	if err != nil {
-		log.WithError(err).Infof("get file by storage id: %v failed", fid)
+		log.WithError(err).Infof("get file by storage id: %v failed", fatherID)
 		return nil, err
 	}
 	return byFolderID, nil
@@ -77,11 +77,11 @@ func (f *FileService) GetFileByType(ctx context.Context, fileType int) ([]*do.Fi
 }
 
 // SelectFileTypeCount 获取不同类型文件的统计数量
-func (f *FileService) SelectFileTypeCount(ctx context.Context, sid string) (types []*do.Statistics, err error) {
+func (f *FileService) SelectFileTypeCount(ctx context.Context, storageID string) (types []*do.Statistics, err error) {
 	log := logger.GetLogger(ctx, "SelectFileTypeCount")
-	typeCount, err := f.file.SelectFileTypeCount(ctx, sid)
+	typeCount, err := f.file.SelectFileTypeCount(ctx, storageID)
 	if err != nil {
-		log.WithError(err).Infof("get file count by storage: %v failed", sid)
+		log.WithError(err).Infof("get file count by storage: %v failed", storageID)
 		return nil, err
 	}
 	return typeCount, nil
@@ -118,32 +118,32 @@ func (f *FileService) UploadFile(ctx context.Context, storage *do.Storage, part 
 }
 
 // StoreFile 保存文件信息并更新仓库现容量大小
-func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, sid, fid string) (*do.File, error) {
+func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageID, fatherID string) (*do.File, error) {
 	log := logger.GetLogger(ctx, "StoreFile")
 	filename := info.Name
 	// 判断是否已存在同名文件并修改文件名（增加数字编号）
-	if _, err := f.file.SelectFileByName(ctx, filename, sid, fid); err != nil {
+	if _, err := f.file.SelectFileByName(ctx, filename, storageID, fatherID); err != nil {
 		return nil, err
 	} else {
 		filename = utils.AddSuffixToFilename(filename)
 	}
 	file := &do.File{
 		Name:      filename,
-		StorageID: sid,
+		StorageID: storageID,
 		FatherID:  global.DefaultFatherID,
 		Type:      int(utils.GetFileType(strings.ToLower(path.Ext(filename)))),
 		FileInfo:  *info,
 	}
-	if len(fid) != 0 {
-		file.FatherID = fid
+	if len(fatherID) != 0 {
+		file.FatherID = fatherID
 	}
 	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := f.file.InsertFile(ctx, tx, file); err != nil {
 			log.WithError(err).Warnf("save file: %+v failed", file)
 			return err
 		}
-		if err := f.storage.UpdateCurrentSize(ctx, tx, sid, info.Size); err != nil {
-			log.WithError(err).Warnf("update storage: %v, size: %v failed", sid, info.Size)
+		if err := f.storage.UpdateCurrentSize(ctx, tx, storageID, info.Size); err != nil {
+			log.WithError(err).Warnf("update storage: %v, size: %v failed", storageID, info.Size)
 			return err
 		}
 		if err := f.info.UpdateFileInfo(ctx, tx, info.ID, 1); err != nil {
@@ -160,15 +160,15 @@ func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, sid, fid
 }
 
 // DeleteFile 删除文件信息，并更新数据仓库的容量大小
-func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, id string) error {
+func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, fileID string) error {
 	log := logger.GetLogger(ctx, "DeleteFile")
-	file, err := f.file.SelectFileByID(ctx, id)
+	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
 		return err
 	}
 	err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := f.file.DeleteFileByID(ctx, id); err != nil {
-			log.WithError(err).Warnf("delete file: %v failed", id)
+		if err := f.file.DeleteFileByID(ctx, fileID); err != nil {
+			log.WithError(err).Warnf("delete file: %v failed", fileID)
 			return err
 		}
 		if err := f.storage.UpdateCurrentSize(ctx, tx, file.StorageID, -file.FileInfo.Size); err != nil {
@@ -197,16 +197,16 @@ func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, id st
 		log.WithError(err).Warn("transaction failed")
 		return err
 	}
-	log.Infof("delete file: %v success", id)
+	log.Infof("delete file: %v success", fileID)
 	return nil
 }
 
 // RenameFile 重命名，需要判断当前文件夹下是否存在同样名字的文件
-func (f *FileService) RenameFile(ctx context.Context, id, name string) error {
+func (f *FileService) RenameFile(ctx context.Context, fileID, name string) error {
 	log := logger.GetLogger(ctx, "RenameFile")
-	file, err := f.file.SelectFileByID(ctx, id)
+	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
-		log.WithError(err).Warnf("get file by id: %v failed", id)
+		log.WithError(err).Warnf("get file by id: %v failed", fileID)
 		return err
 	}
 	exist, err := f.file.SelectFileByName(ctx, name, file.StorageID, file.FatherID)
@@ -216,55 +216,55 @@ func (f *FileService) RenameFile(ctx context.Context, id, name string) error {
 	} else if exist != nil {
 		return errors.New(global.ErrorOfConflict)
 	}
-	if err := f.file.UpdateFile(ctx, id, map[string]interface{}{"name": name}); err != nil {
-		log.WithError(err).Warnf("update file: %v name: %v failed", id, name)
+	if err := f.file.UpdateFile(ctx, fileID, map[string]interface{}{"name": name}); err != nil {
+		log.WithError(err).Warnf("update file: %v name: %v failed", fileID, name)
 		return err
 	}
-	log.Infof("update file: %v name: %v success", id, name)
+	log.Infof("update file: %v name: %v success", fileID, name)
 	return nil
 }
 
 // MoveFile 移动文件，需要判断当前文件夹下是否存在同样名字的文件
-func (f *FileService) MoveFile(ctx context.Context, fid, id string) error {
+func (f *FileService) MoveFile(ctx context.Context, fatherID, fileID string) error {
 	log := logger.GetLogger(ctx, "MoveFile")
-	file, err := f.file.SelectFileByID(ctx, id)
+	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
-		log.WithError(err).Warnf("get file by id: %v failed", id)
+		log.WithError(err).Warnf("get file by id: %v failed", fileID)
 		return err
 	}
-	exist, err := f.file.SelectFileByName(ctx, file.Name, file.StorageID, fid)
+	exist, err := f.file.SelectFileByName(ctx, file.Name, file.StorageID, fatherID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		log.WithError(err).Warnf("get file by name: %v in storage: %v, father: %v failed", file.Name, file.StorageID, fid)
+		log.WithError(err).Warnf("get file by name: %v in storage: %v, father: %v failed", file.Name, file.StorageID, fatherID)
 		return err
 	} else if exist != nil {
 		return errors.New(global.ErrorOfConflict)
 	}
 	save := map[string]interface{}{"father_id": global.DefaultFatherID}
-	if len(fid) != 0 {
-		save["father_id"] = fid
+	if len(fatherID) != 0 {
+		save["father_id"] = fatherID
 	}
-	if err = f.file.UpdateFile(ctx, id, save); err != nil {
-		log.WithError(err).Warnf("update file: %v father: %v failed", id, fid)
+	if err = f.file.UpdateFile(ctx, fileID, save); err != nil {
+		log.WithError(err).Warnf("update file: %v father: %v failed", fileID, fatherID)
 		return err
 	}
-	log.Infof("update file: %v father: %v success", id, fid)
+	log.Infof("update file: %v father: %v success", fileID, fatherID)
 	return nil
 }
 
 // CopyFile 复制文件，需要判断当前文件夹下是否存在同样名字的文件
-func (f *FileService) CopyFile(ctx context.Context, id, fid string) error {
+func (f *FileService) CopyFile(ctx context.Context, fileID, fatherID string) error {
 	log := logger.GetLogger(ctx, "CopyFile")
-	file, err := f.file.SelectFileByID(ctx, id)
+	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
-		log.WithError(err).Warnf("get file by id: %v failed", id)
+		log.WithError(err).Warnf("get file by id: %v failed", fileID)
 		return err
 	}
-	_, err = f.StoreFile(ctx, &file.FileInfo, file.StorageID, fid)
+	_, err = f.StoreFile(ctx, &file.FileInfo, file.StorageID, fatherID)
 	if err != nil {
-		log.WithError(err).Warnf("store file: %v to father: %v of info: %+v failed", id, fid, file.FileInfo)
+		log.WithError(err).Warnf("store file: %v to father: %v of info: %+v failed", fileID, fatherID, file.FileInfo)
 		return err
 	}
-	log.Infof("store file: %v to father: %v of info: %+v success", id, fid, file.FileInfo)
+	log.Infof("store file: %v to father: %v of info: %+v success", fileID, fatherID, file.FileInfo)
 	return nil
 }
 

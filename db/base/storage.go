@@ -12,11 +12,11 @@ import (
 type StorageDao interface {
 	InsertStorage(ctx context.Context, tx *gorm.DB, storage *do.Storage) error
 
-	DeleteStorageByID(ctx context.Context, tx *gorm.DB, id string) error
+	DeleteStorageByID(ctx context.Context, tx *gorm.DB, storageID string) error
 
 	UpdateStorage(ctx context.Context, storage *do.Storage) error
-	UpdateCurrentSize(ctx context.Context, tx *gorm.DB, id string, size int64) error
-	UpdateMaxSize(ctx context.Context, id string, size int64) error
+	UpdateCurrentSize(ctx context.Context, tx *gorm.DB, storageID string, size int64) error
+	UpdateMaxSize(ctx context.Context, storageID string, size int64) error
 
-	SelectStorageByUserID(ctx context.Context, id string) (*do.Storage, error)
+	SelectStorageByUserID(ctx context.Context, storageID string) (*do.Storage, error)
 }

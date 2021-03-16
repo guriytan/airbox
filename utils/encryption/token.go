@@ -40,8 +40,8 @@ func ParseEmailToken(token string) (string, int64, error) {
 }
 
 // GenerateShareToken return the token of link which can download file with no authority
-func GenerateShareToken(id string) (string, error) {
-	return aesEncryption(id, exp(global.TokenFileExpiration), global.SecretKeyFile)
+func GenerateShareToken(value string) (string, error) {
+	return aesEncryption(value, exp(global.TokenFileExpiration), global.SecretKeyFile)
 }
 
 // ParseShareToken return the file id and the time
