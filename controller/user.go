@@ -200,7 +200,7 @@ func (u *UserController) Unsubscribe(c *gin.Context) {
 
 	log := logger.GetLogger(ctx, "ResetPwdByOrigin")
 	req := vo.UserModel{}
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}

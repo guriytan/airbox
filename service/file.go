@@ -66,9 +66,9 @@ func (f *FileService) SelectFileByFatherID(ctx context.Context, fatherID string)
 }
 
 // GetFileByType 获取类型为fileType的文件
-func (f *FileService) GetFileByType(ctx context.Context, fileType int) ([]*do.File, error) {
+func (f *FileService) GetFileByType(ctx context.Context, fatherID string, fileType int) ([]*do.File, error) {
 	log := logger.GetLogger(ctx, "GetFileByType")
-	byType, err := f.file.SelectFileByType(ctx, fileType)
+	byType, err := f.file.SelectFileByType(ctx, fatherID, fileType)
 	if err != nil {
 		log.WithError(err).Infof("get file by type: %v failed", fileType)
 		return nil, err
@@ -85,6 +85,32 @@ func (f *FileService) SelectFileTypeCount(ctx context.Context, storageID string)
 		return nil, err
 	}
 	return typeCount, nil
+}
+
+// NewFile 新建文件
+func (f *FileService) NewFile(ctx context.Context, storageID, fatherID, name string, fileType global.FileType) (*do.File, error) {
+	log := logger.GetLogger(ctx, "StoreFile")
+	filename := name
+	// 判断是否已存在同名文件并修改文件名（增加数字编号）
+	if _, err := f.file.SelectFileByName(ctx, filename, storageID, fatherID); err != nil {
+		return nil, err
+	} else {
+		filename = utils.AddSuffixToFilename(filename)
+	}
+	file := &do.File{
+		Name:      filename,
+		StorageID: storageID,
+		FatherID:  global.DefaultFatherID,
+		Type:      int(fileType),
+	}
+	if len(fatherID) != 0 {
+		file.FatherID = fatherID
+	}
+	if err := f.file.InsertFile(ctx, nil, file); err != nil {
+		log.WithError(err).Warnf("save file: %+v failed", file)
+		return nil, err
+	}
+	return file, nil
 }
 
 // UploadFile 保存文件信息，并更新数据仓库的容量大小

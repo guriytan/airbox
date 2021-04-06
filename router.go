@@ -4,7 +4,6 @@ import (
 	"airbox/controller"
 	"airbox/middleware"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,8 +12,8 @@ type Router struct {
 }
 
 func (router *Router) PathMapping() *Router {
-	router.Use(cors.Default())
 	router.Use(gin.Recovery())
+	router.Use(middleware.CORS())
 	router.Use(middleware.InjectContext)
 
 	// info组，负责一些显示的数据以及文件分享api
@@ -38,6 +37,7 @@ func (router *Router) PathMapping() *Router {
 	// file组，负责文件相关操作的api
 	file := router.Group("/file", middleware.Login)
 	fileController := controller.GetFileController()
+	file.POST("/new", fileController.NewFile)           // 上传文件
 	file.POST("/upload", fileController.UploadFile)     // 上传文件
 	file.GET("/:file_id", fileController.DownloadFile)  // 下载文件
 	file.DELETE("/:file_id", fileController.DeleteFile) // 删除文件

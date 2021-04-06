@@ -34,8 +34,9 @@ func InitializeLogger() {
 			EncodeDuration: zapcore.MillisDurationEncoder,
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 		},
-		OutputPaths:      []string{"stdout", global.LogPath},
-		ErrorOutputPaths: []string{"stderr", global.LogPath},
+		OutputPaths:       []string{"stdout", global.LogPath},
+		ErrorOutputPaths:  []string{"stderr", global.LogPath},
+		DisableStacktrace: true,
 	}
 	var err error
 	logger, err = cfg.Build()

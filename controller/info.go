@@ -42,7 +42,8 @@ func (i *InfoController) ListFile(c *gin.Context) {
 
 	log := logger.GetLogger(ctx, "ListFile")
 	req := vo.FileModel{}
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BindQuery(&req); err != nil {
+		log.WithError(err).Warnf("bind failed")
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -56,7 +57,7 @@ func (i *InfoController) ListFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	c.JSON(http.StatusOK, map[string]interface{}{"file": files})
+	c.JSON(http.StatusOK, map[string]interface{}{"files": files})
 }
 
 // UserInfo 显示用户及相关信息
@@ -77,7 +78,7 @@ func (i *InfoController) UserInfo(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	c.JSON(http.StatusOK, map[string]interface{}{"userInfo": userInfo, "count": count})
+	c.JSON(http.StatusOK, map[string]interface{}{"user_info": userInfo, "count": count})
 }
 
 // ListType 显示对应类型的文件
@@ -86,11 +87,11 @@ func (i *InfoController) ListType(c *gin.Context) {
 
 	log := logger.GetLogger(ctx, "ListType")
 	req := vo.TypeModel{}
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	files, err := i.file.GetFileByType(ctx, int(req.Type))
+	files, err := i.file.GetFileByType(ctx, req.FatherID, int(req.Type))
 	if err != nil {
 		log.WithError(err).Warnf("get file by type failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
@@ -105,7 +106,7 @@ func (i *InfoController) ShareFile(c *gin.Context) {
 
 	log := logger.GetLogger(ctx, "ShareFile")
 	req := vo.ShareModel{}
-	if err := c.BindJSON(&req); err != nil {
+	if err := c.BindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}

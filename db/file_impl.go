@@ -59,8 +59,12 @@ func (f *FileDaoImpl) SelectFileByFatherID(ctx context.Context, fileID string) (
 }
 
 // SelectFileByType 根据文件类型获得文件
-func (f *FileDaoImpl) SelectFileByType(ctx context.Context, fileType int) (files []*do.File, err error) {
-	err = f.db.WithContext(ctx).Preload("FileInfo").Where("type = ?", fileType).Order("created_at desc").Find(&files).Error
+func (f *FileDaoImpl) SelectFileByType(ctx context.Context, fatherID string, fileType int) (files []*do.File, err error) {
+	tx := f.db.WithContext(ctx).Preload("FileInfo").Where("type = ?", fileType)
+	if len(fatherID) != 0 {
+		tx = tx.Where("father_id = ?", fatherID)
+	}
+	err = tx.Order("created_at desc").Find(&files).Error
 	return
 }
 

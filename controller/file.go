@@ -41,6 +41,31 @@ func GetFileController() *FileController {
 	return file
 }
 
+// NewFile 新建空文件
+func (f *FileController) NewFile(c *gin.Context) {
+	ctx := utils.CopyCtx(c)
+
+	log := logger.GetLogger(ctx, "UploadFile")
+	req := &vo.FileModel{}
+	if err := c.BindQuery(req); err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	userInfo, err := f.user.GetUserByID(ctx, f.GetAuth(c).ID)
+	if err != nil {
+		log.WithError(err).Warnf("get user failed")
+		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
+		return
+	}
+	uploadFile, err := f.file.NewFile(ctx, userInfo.Storage.ID, req.FatherID, req.Name, req.Type)
+	if err != nil {
+		log.WithError(err).Warnf("upload file failed")
+		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
+		return
+	}
+	c.JSON(http.StatusOK, map[string]interface{}{"file": uploadFile})
+}
+
 // UploadFile 文件上传
 func (f *FileController) UploadFile(c *gin.Context) {
 	ctx := utils.CopyCtx(c)

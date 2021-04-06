@@ -19,12 +19,12 @@ const (
 type FileType int
 
 const (
-	FileFolderType FileType = iota
-	FileMusicType
-	FileVideoType
-	FileDocumentType
-	FilePictureType
-	FileOtherType
+	FileOtherType    FileType = 0
+	FileMusicType    FileType = 1
+	FileVideoType    FileType = 2
+	FileDocumentType FileType = 3
+	FilePictureType  FileType = 4
+	FileFolderType   FileType = 5
 )
 
 const (
