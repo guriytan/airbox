@@ -15,8 +15,8 @@ type UserModel struct {
 }
 
 type ShareModel struct {
-	FileID int64  `json:"file_id,string"  form:"file_id"`
-	Link   string `json:"link"            form:"link"`
+	FileID int64  `json:"file_id,string,omitempty"  form:"file_id"`
+	Link   string `json:"link"                      form:"link"`
 }
 
 type TokenModel struct {
@@ -34,31 +34,31 @@ type ResetEmailModel struct {
 }
 
 type FileModel struct {
-	FileID   int64           `json:"file_id,string"   form:"file_id"   uri:"file_id"`
-	Name     string          `json:"name"             form:"name"`
-	FatherID int64           `json:"father_id,string" form:"father_id"`
-	Size     int64           `json:"size"             form:"size"`
-	Hash     string          `json:"hash"             form:"hash"`
-	Type     global.FileType `json:"type"             form:"type"`
+	FileID   int64           `json:"file_id,string,omitempty"   form:"file_id"   uri:"file_id"`
+	Name     string          `json:"name"                       form:"name"`
+	FatherID int64           `json:"father_id,string,omitempty" form:"father_id"`
+	Size     int64           `json:"size"                       form:"size"`
+	Hash     string          `json:"hash"                       form:"hash"`
+	Type     global.FileType `json:"type"                       form:"type"`
 
 	PageParam
 }
 
 type UpdateFileModel struct {
-	FileID   int64                `json:"file_id,string"   form:"file_id"`
-	FatherID int64                `json:"father_id,string" form:"father_id"`
-	Name     string               `json:"name"             form:"name"`
-	OptType  global.OperationType `json:"opt_type"         form:"opt_type"`
+	FileID   int64                `json:"file_id,string,omitempty"   form:"file_id"`
+	FatherID int64                `json:"father_id,string,omitempty" form:"father_id"`
+	Name     string               `json:"name"                       form:"name"`
+	OptType  global.OperationType `json:"opt_type"                   form:"opt_type"`
 }
 
 type TypeModel struct {
-	FatherID int64           `json:"father_id,string" form:"father_id"`
-	Type     global.FileType `json:"type"             form:"type"`
+	FatherID int64           `json:"father_id,string,omitempty" form:"father_id"`
+	Type     global.FileType `json:"type"                       form:"type"`
 
 	PageParam
 }
 
 type PageParam struct {
-	Cursor int64 `json:"cursor,string"    form:"cursor"`
-	Limit  int   `json:"limit"            form:"limit"`
+	Cursor int64 `json:"cursor,string,omitempty"    form:"cursor"`
+	Limit  int   `json:"limit"                      form:"limit"`
 }

@@ -60,6 +60,8 @@ func (f *FileDaoImpl) SelectFileByFatherIDAndType(ctx context.Context, fatherID 
 	tx := f.db.WithContext(ctx).Preload("FileInfo")
 	if fatherID != 0 {
 		tx = tx.Where("father_id = ?", fatherID)
+	} else {
+		tx = tx.Where("father_id = ?", global.DefaultFatherID)
 	}
 	if len(fileType) != 0 {
 		tx = tx.Where("type in ?", fileType)

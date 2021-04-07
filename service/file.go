@@ -295,7 +295,7 @@ func (f *FileService) MoveFile(ctx context.Context, fatherID, fileID int64) erro
 }
 
 // CopyFile 复制文件，需要判断当前文件夹下是否存在同样名字的文件
-func (f *FileService) CopyFile(ctx context.Context, fileID, fatherID int64) error {
+func (f *FileService) CopyFile(ctx context.Context, fatherID, fileID int64) error {
 	log := logger.GetLogger(ctx, "CopyFile")
 	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
