@@ -58,6 +58,9 @@ func (u *UserService) GetUserByID(ctx context.Context, userID int64) (*do.User, 
 		log.WithError(err).Warnf("get user info by id: %v failed", userID)
 		return nil, err
 	}
+	if byID.Storage.CurrentSize > byID.Storage.MaxSize {
+		byID.Storage.CurrentSize = byID.Storage.MaxSize
+	}
 	return byID, nil
 }
 

@@ -46,6 +46,6 @@ func (b *BaseController) DownloadFile(c *gin.Context, file *do.File) {
 	}
 	defer func() { _ = object.Close() }()
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
-	c.Header("Content-Disposition", "attachment; filename="+url.QueryEscape(file.FileInfo.Name))
-	http.ServeContent(c.Writer, c.Request, file.FileInfo.Name, file.FileInfo.UpdatedAt, object)
+	c.Header("Content-Disposition", "attachment; filename="+url.QueryEscape(file.Name))
+	http.ServeContent(c.Writer, c.Request, file.Name, file.UpdatedAt, object)
 }

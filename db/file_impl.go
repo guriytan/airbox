@@ -55,18 +55,23 @@ func (f *FileDaoImpl) SelectFileByID(ctx context.Context, fileID int64) (*do.Fil
 	return file, res.Error
 }
 
-// SelectFileByType 根据文件夹ID和文件类型获得文件
-func (f *FileDaoImpl) SelectFileByFatherIDAndType(ctx context.Context, fatherID int64, fileType []int, cursor int64, limit int) (files []*do.File, err error) {
-	tx := f.db.WithContext(ctx).Preload("FileInfo")
+// SelectFileByType 根据文件夹ID获得文件
+func (f *FileDaoImpl) SelectFileByFatherID(ctx context.Context, storageID, fatherID int64, cursor int64, limit int) (files []*do.File, err error) {
+	tx := f.db.WithContext(ctx).Preload("FileInfo").Where("storage_id = ?", storageID)
 	if fatherID != 0 {
 		tx = tx.Where("father_id = ?", fatherID)
 	} else {
 		tx = tx.Where("father_id = ?", global.DefaultFatherID)
 	}
-	if len(fileType) != 0 {
-		tx = tx.Where("type in ?", fileType)
-	}
 	err = tx.Order("updated_at desc").Find(&files).Error
+	return
+}
+
+// SelectFileByType 根据文件类型获得文件
+func (f *FileDaoImpl) SelectFileByType(ctx context.Context, storageID int64, fileType int, cursor int64, limit int) (files []*do.File, err error) {
+	err = f.db.WithContext(ctx).Preload("FileInfo").
+		Where("storage_id = ? and type = ?", storageID, fileType).
+		Order("updated_at desc").Find(&files).Error
 	return
 }
 
@@ -89,7 +94,7 @@ func (f *FileDaoImpl) SelectFileByName(ctx context.Context, name string, storage
 func (f *FileDaoImpl) SelectFileTypeCount(ctx context.Context, storageID int64) (types []*do.Statistics, err error) {
 	err = f.db.WithContext(ctx).Model(&do.File{}).
 		Select("type, count(*) as count").
-		Where("storage_id = ? and deleted_at is null", storageID).
+		Where("storage_id = ? and type != ? and deleted_at is null", storageID, global.FileFolderType).
 		Group("type").
 		Scan(&types).Error
 	return

@@ -43,7 +43,6 @@ func (i *InfoController) ListFile(c *gin.Context) {
 	log := logger.GetLogger(ctx, "ListFile")
 	req := vo.FileModel{}
 	if err := c.BindQuery(&req); err != nil {
-		log.WithError(err).Warnf("bind failed")
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -51,7 +50,7 @@ func (i *InfoController) ListFile(c *gin.Context) {
 	if req.FatherID != 0 {
 		fatherID = req.FatherID
 	}
-	files, err := i.file.SelectFileByFatherID(ctx, fatherID, req.Cursor, req.Limit)
+	files, err := i.file.SelectFileByFatherID(ctx, i.GetAuth(c).Storage.ID, fatherID, req.Cursor, req.Limit)
 	if err != nil {
 		log.WithError(err).Warnf("get file by father_id failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
@@ -91,7 +90,7 @@ func (i *InfoController) ListType(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	files, err := i.file.GetFileByType(ctx, req.FatherID, int(req.Type), req.Cursor, req.Limit)
+	files, err := i.file.GetFileByType(ctx, i.GetAuth(c).Storage.ID, req.Type, req.Cursor, req.Limit)
 	if err != nil {
 		log.WithError(err).Warnf("get file by type failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)

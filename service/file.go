@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"airbox/db"
 	"airbox/db/base"
@@ -55,29 +56,20 @@ func (f *FileService) GetFileByID(ctx context.Context, fileID int64) (*do.File, 
 }
 
 // SelectFileByFatherID 获取在父节点fid下的文件
-func (f *FileService) SelectFileByFatherID(ctx context.Context, fatherID, cursor int64, limit int) (files []*do.File, err error) {
+func (f *FileService) SelectFileByFatherID(ctx context.Context, storageID, fatherID, cursor int64, limit int) (files []*do.File, err error) {
 	log := logger.GetLogger(ctx, "SelectFileByFatherID")
-	folders, err := f.file.SelectFileByFatherIDAndType(ctx, fatherID, []int{int(global.FileFolderType)}, cursor, limit)
+	byFolderID, err := f.file.SelectFileByFatherID(ctx, storageID, fatherID, cursor, limit)
 	if err != nil {
 		log.WithError(err).Infof("get file by storage id: %v failed", fatherID)
 		return nil, err
 	}
-	files = append(files, folders...)
-
-	fileTypes := []int{int(global.FileOtherType), int(global.FileMusicType), int(global.FileVideoType), int(global.FileDocumentType), int(global.FilePictureType)}
-	byFolderID, err := f.file.SelectFileByFatherIDAndType(ctx, fatherID, fileTypes, cursor, limit)
-	if err != nil {
-		log.WithError(err).Infof("get file by storage id: %v failed", fatherID)
-		return nil, err
-	}
-	files = append(files, byFolderID...)
-	return files, nil
+	return byFolderID, nil
 }
 
 // GetFileByType 获取类型为fileType的文件
-func (f *FileService) GetFileByType(ctx context.Context, fatherID int64, fileType int, cursor int64, limit int) ([]*do.File, error) {
+func (f *FileService) GetFileByType(ctx context.Context, storageID int64, fileType global.FileType, cursor int64, limit int) ([]*do.File, error) {
 	log := logger.GetLogger(ctx, "GetFileByType")
-	byType, err := f.file.SelectFileByFatherIDAndType(ctx, fatherID, []int{fileType}, cursor, limit)
+	byType, err := f.file.SelectFileByType(ctx, storageID, int(fileType), cursor, limit)
 	if err != nil {
 		log.WithError(err).Infof("get file by type: %v failed", fileType)
 		return nil, err
@@ -97,38 +89,22 @@ func (f *FileService) SelectFileTypeCount(ctx context.Context, storageID int64) 
 }
 
 // NewFile 新建文件
-func (f *FileService) NewFile(ctx context.Context, storageID, fatherID int64, name string, fileType global.FileType) (file *do.File, err error) {
+func (f *FileService) NewFile(ctx context.Context, storageID, fatherID int64, name string) (file *do.File, err error) {
 	log := logger.GetLogger(ctx, "StoreFile")
-	filename, err := f.FixFilename(ctx, name, storageID, fatherID)
-	if err != nil {
-		log.WithError(err).Warnf("fix name: %+v failed", name)
+
+	fileInfo := &do.FileInfo{
+		Hash: hasher.GetSha256().Hash(storageID, fatherID, name),
+		Name: name,
+	}
+	if err := f.info.InsertFileInfo(ctx, nil, fileInfo); err != nil {
+		log.WithError(err).Warnf("save file info: %+v failed", fileInfo)
 		return nil, err
 	}
-	err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		fileInfo := &do.FileInfo{
-			Hash: hasher.GetSha256().Hash(storageID, fatherID, filename),
-			Name: filename,
-		}
-		if err := f.info.InsertFileInfo(ctx, tx, fileInfo); err != nil {
-			log.WithError(err).Warnf("save file info: %+v failed", fileInfo)
-			return err
-		}
-		file = &do.File{
-			Name:       filename,
-			StorageID:  storageID,
-			FatherID:   global.DefaultFatherID,
-			Type:       int(fileType),
-			FileInfoID: fileInfo.ID,
-		}
-		if fatherID != 0 {
-			file.FatherID = fatherID
-		}
-		if err := f.file.InsertFile(ctx, tx, file); err != nil {
-			log.WithError(err).Warnf("save file: %+v failed", file)
-			return err
-		}
-		return nil
-	})
+	file, err = f.StoreFile(ctx, fileInfo, storageID, fatherID, name)
+	if err != nil {
+		log.WithError(err).Warnf("store file: %s failed", name)
+		return nil, err
+	}
 	return file, nil
 }
 
@@ -163,11 +139,11 @@ func (f *FileService) UploadFile(ctx context.Context, storage *do.Storage, part 
 }
 
 // StoreFile 保存文件信息并更新仓库现容量大小
-func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageID, fatherID int64) (*do.File, error) {
+func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageID, fatherID int64, name string) (*do.File, error) {
 	log := logger.GetLogger(ctx, "StoreFile")
-	filename, err := f.FixFilename(ctx, info.Name, storageID, fatherID)
+	filename, err := f.FixFilename(ctx, name, storageID, fatherID)
 	if err != nil {
-		log.WithError(err).Warnf("fix name: %+v failed", info.Name)
+		log.WithError(err).Warnf("fix name: %+v failed", name)
 		return nil, err
 	}
 	file := &do.File{
@@ -177,6 +153,9 @@ func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageI
 		Type:      int(utils.GetFileType(strings.ToLower(path.Ext(filename)))),
 		FileInfo:  *info,
 	}
+	if len(info.OssKey) == 0 {
+		file.Type = int(global.FileFolderType)
+	}
 	if fatherID != 0 {
 		file.FatherID = fatherID
 	}
@@ -185,9 +164,11 @@ func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageI
 			log.WithError(err).Warnf("save file: %+v failed", file)
 			return err
 		}
-		if err := f.storage.UpdateCurrentSize(ctx, tx, storageID, info.Size); err != nil {
-			log.WithError(err).Warnf("update storage: %v, size: %v failed", storageID, info.Size)
-			return err
+		if info.Size != 0 {
+			if err := f.storage.UpdateCurrentSize(ctx, tx, storageID, info.Size); err != nil {
+				log.WithError(err).Warnf("update storage: %v, size: %v failed", storageID, info.Size)
+				return err
+			}
 		}
 		if err := f.info.UpdateFileInfo(ctx, tx, info.ID, 1); err != nil {
 			log.WithError(err).Warnf("update file info: %v failed", info.ID)
@@ -203,44 +184,53 @@ func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageI
 }
 
 // DeleteFile 删除文件信息，并更新数据仓库的容量大小
-func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, fileID int64) error {
+func (f *FileService) DeleteFile(ctx context.Context, fileID int64) error {
 	log := logger.GetLogger(ctx, "DeleteFile")
 	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
+		log.WithError(err).Infof("get file by id: %d failed", fileID)
 		return err
 	}
-	err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := f.file.DeleteFileByID(ctx, tx, fileID); err != nil {
-			log.WithError(err).Warnf("delete file: %v failed", fileID)
-			return err
-		}
+	if err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error { return f.deleteFile(ctx, tx, file) }); err != nil {
+		log.WithError(err).Warn("transaction failed")
+		return err
+	}
+	log.Infof("delete all file by id: %v success", fileID)
+	return nil
+}
+
+// deleteFile 递归删除文件信息，只涉及file表
+func (f *FileService) deleteFile(ctx context.Context, tx *gorm.DB, file *do.File) error {
+	log := logger.GetLogger(ctx, "deleteFile")
+	if err := f.file.DeleteFileByID(ctx, tx, file.ID); err != nil {
+		log.WithError(err).Warnf("delete file: %v failed", file.ID)
+		return err
+	}
+	if file.FileInfo.Size != 0 {
 		if err := f.storage.UpdateCurrentSize(ctx, tx, file.StorageID, -file.FileInfo.Size); err != nil {
 			log.WithError(err).Warnf("update storage: %v size: %v failed", file.StorageID, -file.FileInfo.Size)
 			return err
 		}
-		if file.FileInfo.Link > 1 {
-			if err := f.info.UpdateFileInfo(ctx, tx, file.FileInfoID, -1); err != nil {
-				log.WithError(err).Warnf("update file info: %v failed", file.FileInfoID)
-				return err
-			}
-		} else {
-			if err := f.info.DeleteFileInfo(ctx, tx, file.FileInfoID); err != nil {
-				log.WithError(err).Warnf("delete file info: %v failed", file.FileInfoID)
-				return err
-			}
-			if err := pkg.GetOSS().RemoveObject(ctx, storage.BucketName, file.FileInfo.OssKey, minio.RemoveObjectOptions{}); err != nil {
-				log.WithError(err).Warnf("remove object: %v from bucket: %v failed", file.FileInfo.OssKey, storage.BucketName)
-				return err
-			}
-			log.Infof("remove file: %v from bucket: %v success", file.FileInfo.OssKey, storage.BucketName)
-		}
-		return nil
-	})
-	if err != nil {
-		log.WithError(err).Warn("transaction failed")
+	}
+	if err := f.info.UpdateFileInfo(ctx, tx, file.FileInfoID, -1); err != nil {
+		log.WithError(err).Warnf("update file info: %v failed", file.FileInfoID)
 		return err
 	}
-	log.Infof("delete file: %v success", fileID)
+
+	if file.Type == int(global.FileFolderType) {
+		files, err := f.file.SelectFileByFatherID(ctx, file.StorageID, file.ID, 0, 0)
+		if err != nil {
+			log.WithError(err).Infof("get file by father id: %d failed", file.ID)
+			return err
+		}
+		for _, child := range files {
+			if err := f.deleteFile(ctx, tx, child); err != nil {
+				log.WithError(err).Infof("delete file by id: %d failed", file.ID)
+				return err
+			}
+		}
+	}
+	log.Infof("delete file: %v success", file.ID)
 	return nil
 }
 
@@ -302,12 +292,59 @@ func (f *FileService) CopyFile(ctx context.Context, fatherID, fileID int64) erro
 		log.WithError(err).Warnf("get file by id: %v failed", fileID)
 		return err
 	}
-	_, err = f.StoreFile(ctx, &file.FileInfo, file.StorageID, fatherID)
+	filename, err := f.FixFilename(ctx, file.Name, file.StorageID, fatherID)
 	if err != nil {
-		log.WithError(err).Warnf("store file: %v to father: %v of info: %+v failed", fileID, fatherID, file.FileInfo)
+		log.WithError(err).Warnf("fix name: %+v failed", file.Name)
 		return err
 	}
+
+	file.Name = filename
+	if err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error { return f.copyFile(ctx, tx, file.StorageID, fatherID, file) }); err != nil {
+		log.WithError(err).Warn("transaction failed")
+		return err
+	}
+
 	log.Infof("store file: %v to father: %v of info: %+v success", fileID, fatherID, file.FileInfo)
+	return nil
+}
+
+// copyFile 递归复制文件
+func (f *FileService) copyFile(ctx context.Context, tx *gorm.DB, storageID, fatherID int64, file *do.File) (err error) {
+	log := logger.GetLogger(ctx, "copyFile")
+
+	var files []*do.File
+	if file.Type == int(global.FileFolderType) {
+		files, err = f.file.SelectFileByFatherID(ctx, file.StorageID, file.ID, 0, 0)
+		if err != nil {
+			log.WithError(err).Infof("get file by father id: %d failed", file.ID)
+			return err
+		}
+	}
+	file.ID = utils.GetSnowflake().Generate()
+	file.CreatedAt = time.Now()
+	file.UpdatedAt = time.Now()
+	file.FatherID = fatherID
+
+	if err := f.file.InsertFile(ctx, tx, file); err != nil {
+		log.WithError(err).Warnf("save file: %+v failed", file)
+		return err
+	}
+	if file.FileInfo.Size != 0 {
+		if err := f.storage.UpdateCurrentSize(ctx, tx, storageID, file.FileInfo.Size); err != nil {
+			log.WithError(err).Warnf("update storage: %v, size: %v failed", storageID, file.FileInfo.Size)
+			return err
+		}
+	}
+	if err := f.info.UpdateFileInfo(ctx, tx, file.FileInfo.ID, 1); err != nil {
+		log.WithError(err).Warnf("update file info: %v failed", file.FileInfo.ID)
+		return err
+	}
+	for _, child := range files {
+		if err := f.copyFile(ctx, tx, storageID, file.ID, child); err != nil {
+			log.WithError(err).Infof("delete file by id: %d failed", file.ID)
+			return err
+		}
+	}
 	return nil
 }
 

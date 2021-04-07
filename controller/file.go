@@ -57,7 +57,7 @@ func (f *FileController) NewFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, global.ErrorOfRequestParameter)
 		return
 	}
-	uploadFile, err := f.file.NewFile(ctx, userInfo.Storage.ID, req.FatherID, req.Name, req.Type)
+	uploadFile, err := f.file.NewFile(ctx, userInfo.Storage.ID, req.FatherID, req.Name)
 	if err != nil {
 		log.WithError(err).Warnf("upload file failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
@@ -117,7 +117,7 @@ func (f *FileController) uploadFile(ctx context.Context, reader *multipart.Reade
 	defer func() { _ = part.Close() }()
 	// 查找是否存在md5相同的文件
 	fileByHash, err := f.file.SelectFileByHash(ctx, req.Hash)
-	if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && fileByHash.Size != req.Size) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		// 调用service方法保存文件数据
 		fileByHash, err = f.file.UploadFile(ctx, &userInfo.Storage, part, req.Hash, req.Size)
 		if err != nil {
@@ -128,7 +128,7 @@ func (f *FileController) uploadFile(ctx context.Context, reader *multipart.Reade
 		log.WithError(err).Warnf("get file by hash failed")
 		return nil, err
 	}
-	fileInfo, err := f.file.StoreFile(ctx, fileByHash, userInfo.Storage.ID, req.FatherID)
+	fileInfo, err := f.file.StoreFile(ctx, fileByHash, userInfo.Storage.ID, req.FatherID, part.FileName())
 	if err != nil {
 		log.WithError(err).Warnf("store file failed")
 		return nil, err
@@ -166,7 +166,7 @@ func (f *FileController) DeleteFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := f.file.DeleteFile(ctx, &f.GetAuth(c).Storage, req.FileID); err != nil {
+	if err := f.file.DeleteFile(ctx, req.FileID); err != nil {
 		log.WithError(err).Warnf("delete file failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return

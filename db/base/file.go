@@ -19,6 +19,7 @@ type FileDao interface {
 
 	SelectFileByID(ctx context.Context, fileID int64) (*do.File, error)
 	SelectFileByName(ctx context.Context, name string, storageID, fatherID int64) ([]*do.File, error)
-	SelectFileByFatherIDAndType(ctx context.Context, fatherID int64, fileType []int, cursor int64, limit int) ([]*do.File, error)
+	SelectFileByFatherID(ctx context.Context, storageID, fatherID int64, cursor int64, limit int) ([]*do.File, error)
+	SelectFileByType(ctx context.Context, storageID int64, fileType int, cursor int64, limit int) ([]*do.File, error)
 	SelectFileTypeCount(ctx context.Context, storageID int64) (types []*do.Statistics, err error)
 }

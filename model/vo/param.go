@@ -52,8 +52,7 @@ type UpdateFileModel struct {
 }
 
 type TypeModel struct {
-	FatherID int64           `json:"father_id,string,omitempty" form:"father_id"`
-	Type     global.FileType `json:"type"                       form:"type"`
+	Type global.FileType `json:"type" form:"type"`
 
 	PageParam
 }

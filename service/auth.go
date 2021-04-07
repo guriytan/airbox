@@ -73,7 +73,7 @@ func (c *AuthService) SendResetLink(ctx context.Context, userID int64, email str
 		return err
 	}
 	link := config.GetConfig().Web.Site + "/reset/" + captcha
-	if err := SendResetLink(ctx, email, link); err != nil {
+	if err = SendResetLink(ctx, email, link); err != nil {
 		log.WithError(err).Warnf("send token: %v to email: %v failed", captcha, email)
 		return err
 	}
