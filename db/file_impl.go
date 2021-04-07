@@ -25,12 +25,15 @@ func (f *FileDaoImpl) InsertFile(ctx context.Context, tx *gorm.DB, file *do.File
 }
 
 // DeleteFileByID 根据文件ID删除文件
-func (f *FileDaoImpl) DeleteFileByID(ctx context.Context, fileID string) error {
-	return f.db.WithContext(ctx).Delete(&do.File{}, "id = ?", fileID).Error
+func (f *FileDaoImpl) DeleteFileByID(ctx context.Context, tx *gorm.DB, fileID int64) error {
+	if tx == nil {
+		tx = f.db.WithContext(ctx)
+	}
+	return tx.Delete(&do.File{}, "id = ?", fileID).Error
 }
 
 // DeleteFileByStorageID 根据仓库ID删除文件
-func (f *FileDaoImpl) DeleteFileByStorageID(ctx context.Context, tx *gorm.DB, storageID string) error {
+func (f *FileDaoImpl) DeleteFileByStorageID(ctx context.Context, tx *gorm.DB, storageID int64) error {
 	if tx == nil {
 		tx = f.db.WithContext(ctx)
 	}
@@ -38,12 +41,12 @@ func (f *FileDaoImpl) DeleteFileByStorageID(ctx context.Context, tx *gorm.DB, st
 }
 
 // UpdateFile 更新文件信息
-func (f *FileDaoImpl) UpdateFile(ctx context.Context, fileID string, file map[string]interface{}) error {
+func (f *FileDaoImpl) UpdateFile(ctx context.Context, fileID int64, file map[string]interface{}) error {
 	return f.db.WithContext(ctx).Model(&do.File{}).Where("id = ?", fileID).Updates(file).Error
 }
 
 // SelectFileByID 根据文件ID获得文件
-func (f *FileDaoImpl) SelectFileByID(ctx context.Context, fileID string) (*do.File, error) {
+func (f *FileDaoImpl) SelectFileByID(ctx context.Context, fileID int64) (*do.File, error) {
 	file := &do.File{}
 	res := f.db.WithContext(ctx).Preload("FileInfo").Where("id = ?", fileID).Find(file)
 	if res.RowsAffected == 0 {
@@ -52,42 +55,39 @@ func (f *FileDaoImpl) SelectFileByID(ctx context.Context, fileID string) (*do.Fi
 	return file, res.Error
 }
 
-// SelectFileByFatherID 根据文件夹ID获得文件
-func (f *FileDaoImpl) SelectFileByFatherID(ctx context.Context, fileID string) (files []*do.File, err error) {
-	err = f.db.WithContext(ctx).Preload("FileInfo").Where("father_id = ?", fileID).Order("created_at desc").Find(&files).Error
-	return
-}
-
-// SelectFileByType 根据文件类型获得文件
-func (f *FileDaoImpl) SelectFileByType(ctx context.Context, fatherID string, fileType int) (files []*do.File, err error) {
-	tx := f.db.WithContext(ctx).Preload("FileInfo").Where("type = ?", fileType)
-	if len(fatherID) != 0 {
+// SelectFileByType 根据文件夹ID和文件类型获得文件
+func (f *FileDaoImpl) SelectFileByFatherIDAndType(ctx context.Context, fatherID int64, fileType []int, cursor int64, limit int) (files []*do.File, err error) {
+	tx := f.db.WithContext(ctx).Preload("FileInfo")
+	if fatherID != 0 {
 		tx = tx.Where("father_id = ?", fatherID)
 	}
-	err = tx.Order("created_at desc").Find(&files).Error
+	if len(fileType) != 0 {
+		tx = tx.Where("type in ?", fileType)
+	}
+	err = tx.Order("updated_at desc").Find(&files).Error
 	return
 }
 
 // SelectFileByName 在数据仓库下查看文件夹下是否有文件名为name的文件
-func (f *FileDaoImpl) SelectFileByName(ctx context.Context, name, storageID, fatherID string) (*do.File, error) {
+func (f *FileDaoImpl) SelectFileByName(ctx context.Context, name string, storageID, fatherID int64) (files []*do.File, err error) {
 	tx := f.db.WithContext(ctx).Where("storage_id = ?", storageID)
-	if len(fatherID) != 0 {
+	if fatherID != 0 {
 		tx = tx.Where("father_id = ?", fatherID)
 	} else {
 		tx = tx.Where("father_id = ? ", global.DefaultFatherID)
 	}
-	file := &do.File{}
-	if err := tx.Where("name = ?", name).Order("id").Limit(1).Find(file).Error; err != nil {
-		return nil, err
+	res := tx.Where("name = ?", name).Order("id").Limit(1).Find(&files)
+	if res.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
-	return file, nil
+	return files, res.Error
 }
 
 // SelectFileTypeCount 获取文件类型的统计数据
-func (f *FileDaoImpl) SelectFileTypeCount(ctx context.Context, storageID string) (types []*do.Statistics, err error) {
-	err = f.db.WithContext(ctx).Model(&do.File{}).
+func (f *FileDaoImpl) SelectFileTypeCount(ctx context.Context, storageID int64) (types []*do.Statistics, err error) {
+	err = f.db.WithContext(ctx).Debug().Model(&do.File{}).
 		Select("type, count(*) as count").
-		Where("deleted_at = 0 and storage_id = ?", storageID).
+		Where("storage_id = ? and deleted_at is null", storageID).
 		Group("type").
 		Scan(&types).Error
 	return

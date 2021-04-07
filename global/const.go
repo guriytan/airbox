@@ -28,7 +28,7 @@ const (
 )
 
 const (
-	DefaultFatherID = "air_box_default_father_id"
+	DefaultFatherID int64 = 0
 )
 
 // 用户名及密码长度限制

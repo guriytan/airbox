@@ -1,10 +1,10 @@
 package do
 
 import (
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 
+	"airbox/utils"
 	"airbox/utils/encryption"
 	"airbox/utils/hasher"
 )
@@ -24,8 +24,8 @@ type User struct {
 }
 
 func (user *User) BeforeCreate(tx *gorm.DB) error {
-	if len(user.ID) == 0 {
-		user.ID = uuid.New().String()
+	if user.ID == 0 {
+		user.ID = utils.GetSnowflake().Generate()
 	}
 	if len(user.Password) != 0 {
 		user.Hash = hasher.GetSha256().Hash(user.Password)

@@ -24,7 +24,7 @@ func (s *StorageDaoImpl) InsertStorage(ctx context.Context, tx *gorm.DB, storage
 }
 
 // DeleteStorageByID 根据数据仓库ID删除数据仓库
-func (s *StorageDaoImpl) DeleteStorageByID(ctx context.Context, tx *gorm.DB, storageID string) error {
+func (s *StorageDaoImpl) DeleteStorageByID(ctx context.Context, tx *gorm.DB, storageID int64) error {
 	if tx == nil {
 		tx = s.db.WithContext(ctx)
 	}
@@ -37,7 +37,7 @@ func (s *StorageDaoImpl) UpdateStorage(ctx context.Context, storage *do.Storage)
 }
 
 // UpdateCurrentSize 更新数据仓库最大容量
-func (s *StorageDaoImpl) UpdateCurrentSize(ctx context.Context, tx *gorm.DB, storageID string, size int64) error {
+func (s *StorageDaoImpl) UpdateCurrentSize(ctx context.Context, tx *gorm.DB, storageID, size int64) error {
 	if tx == nil {
 		tx = s.db.WithContext(ctx)
 	}
@@ -45,12 +45,12 @@ func (s *StorageDaoImpl) UpdateCurrentSize(ctx context.Context, tx *gorm.DB, sto
 }
 
 // UpdateMaxSize 更新数据仓库当前容量
-func (s *StorageDaoImpl) UpdateMaxSize(ctx context.Context, storageID string, size int64) error {
+func (s *StorageDaoImpl) UpdateMaxSize(ctx context.Context, storageID, size int64) error {
 	return s.db.WithContext(ctx).Model(&do.Storage{}).Where("id = ?", storageID).UpdateColumn("max_size", gorm.Expr("max_size + ?", size)).Error
 }
 
 // SelectStorageByUserID 根据用户ID获得数据仓库
-func (s *StorageDaoImpl) SelectStorageByUserID(ctx context.Context, storageID string) (*do.Storage, error) {
+func (s *StorageDaoImpl) SelectStorageByUserID(ctx context.Context, storageID int64) (*do.Storage, error) {
 	storage := &do.Storage{}
 	err := s.db.WithContext(ctx).Find(storage, "id = ?", storageID).Error
 	return storage, err

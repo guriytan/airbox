@@ -25,5 +25,8 @@ func CheckEmailFormat(email string) bool {
 // AddSuffixToFilename used to rename the file if the file is exist
 func AddSuffixToFilename(file string) string {
 	split := strings.LastIndex(file, ".")
+	if split == -1 {
+		return file + "-" + uuid.New().String()
+	}
 	return file[:split] + "-" + uuid.New().String() + file[split:]
 }

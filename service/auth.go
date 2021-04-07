@@ -65,7 +65,7 @@ func (c *AuthService) DeleteCaptcha(ctx context.Context, key string) {
 }
 
 // SendResetLink 根据邮箱生成链接发送至邮箱
-func (c *AuthService) SendResetLink(ctx context.Context, userID, email string) error {
+func (c *AuthService) SendResetLink(ctx context.Context, userID int64, email string) error {
 	log := logger.GetLogger(ctx, "SendResetLink")
 	captcha, err := encryption.GenerateEmailToken(userID)
 	if err != nil {

@@ -1,6 +1,8 @@
 package encryption
 
 import (
+	"strconv"
+
 	json "github.com/json-iterator/go"
 
 	"airbox/global"
@@ -25,30 +27,38 @@ func ParseUserToken(token string, value interface{}) (int64, error) {
 	return exp, err
 }
 
-// GenerateEmailToken return the token of email which used to reset the password
-func GenerateEmailToken(email string) (string, error) {
-	return aesEncryption(email, exp(global.TokenEmailExpiration), global.SecretKeyEmail)
+// GenerateEmailToken return the token of user id which used to reset the password
+func GenerateEmailToken(id int64) (string, error) {
+	return aesEncryption(strconv.FormatInt(id, 10), exp(global.TokenEmailExpiration), global.SecretKeyEmail)
 }
 
-// ParseEmailToken return the  email and the time
-func ParseEmailToken(token string) (string, int64, error) {
-	email, exp, err := aesDecryption(token, global.SecretKeyEmail)
+// ParseEmailToken return the user id and the time
+func ParseEmailToken(token string) (int64, int64, error) {
+	userID, exp, err := aesDecryption(token, global.SecretKeyEmail)
 	if err != nil {
-		return "", 0, err
+		return 0, 0, err
 	}
-	return email, exp, nil
+	id, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	return id, exp, nil
 }
 
 // GenerateShareToken return the token of link which can download file with no authority
-func GenerateShareToken(value string) (string, error) {
-	return aesEncryption(value, exp(global.TokenFileExpiration), global.SecretKeyFile)
+func GenerateShareToken(fileID int64) (string, error) {
+	return aesEncryption(strconv.FormatInt(fileID, 10), exp(global.TokenFileExpiration), global.SecretKeyFile)
 }
 
 // ParseShareToken return the file id and the time
-func ParseShareToken(token string) (string, int64, error) {
-	email, exp, err := aesDecryption(token, global.SecretKeyFile)
+func ParseShareToken(token string) (int64, int64, error) {
+	fileID, exp, err := aesDecryption(token, global.SecretKeyFile)
 	if err != nil {
-		return "", 0, err
+		return 0, 0, err
 	}
-	return email, exp, nil
+	id, err := strconv.ParseInt(fileID, 10, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	return id, exp, nil
 }

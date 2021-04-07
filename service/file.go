@@ -44,7 +44,7 @@ func GetFileService() *FileService {
 }
 
 // GetFileByID 获取文件信息，用于下载
-func (f *FileService) GetFileByID(ctx context.Context, fileID string) (*do.File, error) {
+func (f *FileService) GetFileByID(ctx context.Context, fileID int64) (*do.File, error) {
 	log := logger.GetLogger(ctx, "GetFileByID")
 	fileByID, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
@@ -55,20 +55,29 @@ func (f *FileService) GetFileByID(ctx context.Context, fileID string) (*do.File,
 }
 
 // SelectFileByFatherID 获取在父节点fid下的文件
-func (f *FileService) SelectFileByFatherID(ctx context.Context, fatherID string) (files []*do.File, err error) {
+func (f *FileService) SelectFileByFatherID(ctx context.Context, fatherID, cursor int64, limit int) (files []*do.File, err error) {
 	log := logger.GetLogger(ctx, "SelectFileByFatherID")
-	byFolderID, err := f.file.SelectFileByFatherID(ctx, fatherID)
+	folders, err := f.file.SelectFileByFatherIDAndType(ctx, fatherID, []int{int(global.FileFolderType)}, cursor, limit)
 	if err != nil {
 		log.WithError(err).Infof("get file by storage id: %v failed", fatherID)
 		return nil, err
 	}
-	return byFolderID, nil
+	files = append(files, folders...)
+
+	fileTypes := []int{int(global.FileOtherType), int(global.FileMusicType), int(global.FileVideoType), int(global.FileDocumentType), int(global.FilePictureType)}
+	byFolderID, err := f.file.SelectFileByFatherIDAndType(ctx, fatherID, fileTypes, cursor, limit)
+	if err != nil {
+		log.WithError(err).Infof("get file by storage id: %v failed", fatherID)
+		return nil, err
+	}
+	files = append(files, byFolderID...)
+	return files, nil
 }
 
 // GetFileByType 获取类型为fileType的文件
-func (f *FileService) GetFileByType(ctx context.Context, fatherID string, fileType int) ([]*do.File, error) {
+func (f *FileService) GetFileByType(ctx context.Context, fatherID int64, fileType int, cursor int64, limit int) ([]*do.File, error) {
 	log := logger.GetLogger(ctx, "GetFileByType")
-	byType, err := f.file.SelectFileByType(ctx, fatherID, fileType)
+	byType, err := f.file.SelectFileByFatherIDAndType(ctx, fatherID, []int{fileType}, cursor, limit)
 	if err != nil {
 		log.WithError(err).Infof("get file by type: %v failed", fileType)
 		return nil, err
@@ -77,7 +86,7 @@ func (f *FileService) GetFileByType(ctx context.Context, fatherID string, fileTy
 }
 
 // SelectFileTypeCount 获取不同类型文件的统计数量
-func (f *FileService) SelectFileTypeCount(ctx context.Context, storageID string) (types []*do.Statistics, err error) {
+func (f *FileService) SelectFileTypeCount(ctx context.Context, storageID int64) (types []*do.Statistics, err error) {
 	log := logger.GetLogger(ctx, "SelectFileTypeCount")
 	typeCount, err := f.file.SelectFileTypeCount(ctx, storageID)
 	if err != nil {
@@ -88,28 +97,38 @@ func (f *FileService) SelectFileTypeCount(ctx context.Context, storageID string)
 }
 
 // NewFile 新建文件
-func (f *FileService) NewFile(ctx context.Context, storageID, fatherID, name string, fileType global.FileType) (*do.File, error) {
+func (f *FileService) NewFile(ctx context.Context, storageID, fatherID int64, name string, fileType global.FileType) (file *do.File, err error) {
 	log := logger.GetLogger(ctx, "StoreFile")
-	filename := name
-	// 判断是否已存在同名文件并修改文件名（增加数字编号）
-	if _, err := f.file.SelectFileByName(ctx, filename, storageID, fatherID); err != nil {
-		return nil, err
-	} else {
-		filename = utils.AddSuffixToFilename(filename)
-	}
-	file := &do.File{
-		Name:      filename,
-		StorageID: storageID,
-		FatherID:  global.DefaultFatherID,
-		Type:      int(fileType),
-	}
-	if len(fatherID) != 0 {
-		file.FatherID = fatherID
-	}
-	if err := f.file.InsertFile(ctx, nil, file); err != nil {
-		log.WithError(err).Warnf("save file: %+v failed", file)
+	filename, err := f.FixFilename(ctx, name, storageID, fatherID)
+	if err != nil {
+		log.WithError(err).Warnf("fix name: %+v failed", name)
 		return nil, err
 	}
+	err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		fileInfo := &do.FileInfo{
+			Hash: hasher.GetSha256().Hash(storageID, fatherID, filename),
+			Name: filename,
+		}
+		if err := f.info.InsertFileInfo(ctx, tx, fileInfo); err != nil {
+			log.WithError(err).Warnf("save file info: %+v failed", fileInfo)
+			return err
+		}
+		file = &do.File{
+			Name:       filename,
+			StorageID:  storageID,
+			FatherID:   global.DefaultFatherID,
+			Type:       int(fileType),
+			FileInfoID: fileInfo.ID,
+		}
+		if fatherID != 0 {
+			file.FatherID = fatherID
+		}
+		if err := f.file.InsertFile(ctx, tx, file); err != nil {
+			log.WithError(err).Warnf("save file: %+v failed", file)
+			return err
+		}
+		return nil
+	})
 	return file, nil
 }
 
@@ -124,7 +143,7 @@ func (f *FileService) UploadFile(ctx context.Context, storage *do.Storage, part 
 		Size:   size,
 	}
 	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := f.info.InsertFileInfo(ctx, fileInfo); err != nil {
+		if err := f.info.InsertFileInfo(ctx, tx, fileInfo); err != nil {
 			log.WithError(err).Warnf("save file info: %+v failed", fileInfo)
 			return err
 		}
@@ -144,14 +163,12 @@ func (f *FileService) UploadFile(ctx context.Context, storage *do.Storage, part 
 }
 
 // StoreFile 保存文件信息并更新仓库现容量大小
-func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageID, fatherID string) (*do.File, error) {
+func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageID, fatherID int64) (*do.File, error) {
 	log := logger.GetLogger(ctx, "StoreFile")
-	filename := info.Name
-	// 判断是否已存在同名文件并修改文件名（增加数字编号）
-	if _, err := f.file.SelectFileByName(ctx, filename, storageID, fatherID); err != nil {
+	filename, err := f.FixFilename(ctx, info.Name, storageID, fatherID)
+	if err != nil {
+		log.WithError(err).Warnf("fix name: %+v failed", info.Name)
 		return nil, err
-	} else {
-		filename = utils.AddSuffixToFilename(filename)
 	}
 	file := &do.File{
 		Name:      filename,
@@ -160,10 +177,10 @@ func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageI
 		Type:      int(utils.GetFileType(strings.ToLower(path.Ext(filename)))),
 		FileInfo:  *info,
 	}
-	if len(fatherID) != 0 {
+	if fatherID != 0 {
 		file.FatherID = fatherID
 	}
-	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := f.file.InsertFile(ctx, tx, file); err != nil {
 			log.WithError(err).Warnf("save file: %+v failed", file)
 			return err
@@ -186,14 +203,14 @@ func (f *FileService) StoreFile(ctx context.Context, info *do.FileInfo, storageI
 }
 
 // DeleteFile 删除文件信息，并更新数据仓库的容量大小
-func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, fileID string) error {
+func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, fileID int64) error {
 	log := logger.GetLogger(ctx, "DeleteFile")
 	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
 		return err
 	}
 	err = pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := f.file.DeleteFileByID(ctx, fileID); err != nil {
+		if err := f.file.DeleteFileByID(ctx, tx, fileID); err != nil {
 			log.WithError(err).Warnf("delete file: %v failed", fileID)
 			return err
 		}
@@ -228,7 +245,7 @@ func (f *FileService) DeleteFile(ctx context.Context, storage *do.Storage, fileI
 }
 
 // RenameFile 重命名，需要判断当前文件夹下是否存在同样名字的文件
-func (f *FileService) RenameFile(ctx context.Context, fileID, name string) error {
+func (f *FileService) RenameFile(ctx context.Context, fileID int64, name string) error {
 	log := logger.GetLogger(ctx, "RenameFile")
 	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
@@ -239,7 +256,7 @@ func (f *FileService) RenameFile(ctx context.Context, fileID, name string) error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.WithError(err).Warnf("get file by name: %v in storage: %v, father: %v failed", name, file.StorageID, file.FatherID)
 		return err
-	} else if exist != nil {
+	} else if len(exist) != 0 {
 		return errors.New(global.ErrorOfConflict)
 	}
 	if err := f.file.UpdateFile(ctx, fileID, map[string]interface{}{"name": name}); err != nil {
@@ -251,7 +268,7 @@ func (f *FileService) RenameFile(ctx context.Context, fileID, name string) error
 }
 
 // MoveFile 移动文件，需要判断当前文件夹下是否存在同样名字的文件
-func (f *FileService) MoveFile(ctx context.Context, fatherID, fileID string) error {
+func (f *FileService) MoveFile(ctx context.Context, fatherID, fileID int64) error {
 	log := logger.GetLogger(ctx, "MoveFile")
 	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
@@ -262,11 +279,11 @@ func (f *FileService) MoveFile(ctx context.Context, fatherID, fileID string) err
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.WithError(err).Warnf("get file by name: %v in storage: %v, father: %v failed", file.Name, file.StorageID, fatherID)
 		return err
-	} else if exist != nil {
+	} else if len(exist) != 0 {
 		return errors.New(global.ErrorOfConflict)
 	}
 	save := map[string]interface{}{"father_id": global.DefaultFatherID}
-	if len(fatherID) != 0 {
+	if fatherID != 0 {
 		save["father_id"] = fatherID
 	}
 	if err = f.file.UpdateFile(ctx, fileID, save); err != nil {
@@ -278,7 +295,7 @@ func (f *FileService) MoveFile(ctx context.Context, fatherID, fileID string) err
 }
 
 // CopyFile 复制文件，需要判断当前文件夹下是否存在同样名字的文件
-func (f *FileService) CopyFile(ctx context.Context, fileID, fatherID string) error {
+func (f *FileService) CopyFile(ctx context.Context, fileID, fatherID int64) error {
 	log := logger.GetLogger(ctx, "CopyFile")
 	file, err := f.file.SelectFileByID(ctx, fileID)
 	if err != nil {
@@ -303,4 +320,17 @@ func (f *FileService) SelectFileByHash(ctx context.Context, hash string) (*do.Fi
 		return nil, err
 	}
 	return byMD5, nil
+}
+
+// FixFilename 获取最终文件名
+func (f *FileService) FixFilename(ctx context.Context, name string, storageID, fatherID int64) (string, error) {
+	// 判断是否已存在同名文件并修改文件名（增加数字编号）
+	if _, err := f.file.SelectFileByName(ctx, name, storageID, fatherID); errors.Is(err, gorm.ErrRecordNotFound) {
+		return name, nil
+	} else if err != nil {
+		return "", err
+	} else {
+		name = utils.AddSuffixToFilename(name)
+	}
+	return name, nil
 }

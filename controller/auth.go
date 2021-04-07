@@ -103,7 +103,7 @@ func (auth *AuthController) ShareLink(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	if len(req.FileID) == 0 {
+	if req.FileID == 0 {
 		c.JSON(http.StatusBadRequest, global.ErrorOfFileID)
 		return
 	}

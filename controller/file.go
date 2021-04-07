@@ -47,7 +47,7 @@ func (f *FileController) NewFile(c *gin.Context) {
 
 	log := logger.GetLogger(ctx, "UploadFile")
 	req := &vo.FileModel{}
-	if err := c.BindQuery(req); err != nil {
+	if err := c.BindJSON(req); err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
@@ -191,7 +191,7 @@ func (f *FileController) UpdateFile(c *gin.Context) {
 	switch req.OptType {
 	case global.OperationTypeRename:
 		// 重命名
-		if err := f.file.RenameFile(ctx, req.Name, req.FileID); err != nil {
+		if err := f.file.RenameFile(ctx, req.FileID, req.Name); err != nil {
 			log.WithError(err).Warnf("rename failed")
 			c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 			return

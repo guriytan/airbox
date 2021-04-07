@@ -16,12 +16,15 @@ type FileInfoDaoImpl struct {
 }
 
 // InsertFileInfo 新增文件信息
-func (f *FileInfoDaoImpl) InsertFileInfo(ctx context.Context, info *do.FileInfo) error {
-	return f.db.WithContext(ctx).Create(info).Error
+func (f *FileInfoDaoImpl) InsertFileInfo(ctx context.Context, tx *gorm.DB, info *do.FileInfo) error {
+	if tx == nil {
+		tx = f.db.WithContext(ctx)
+	}
+	return tx.Create(info).Error
 }
 
 // DeleteFileInfo 根据文件信息ID删除文件信息
-func (f *FileInfoDaoImpl) DeleteFileInfo(ctx context.Context, tx *gorm.DB, infoID string) error {
+func (f *FileInfoDaoImpl) DeleteFileInfo(ctx context.Context, tx *gorm.DB, infoID int64) error {
 	if tx == nil {
 		tx = f.db.WithContext(ctx)
 	}
@@ -29,7 +32,7 @@ func (f *FileInfoDaoImpl) DeleteFileInfo(ctx context.Context, tx *gorm.DB, infoI
 }
 
 // UpdateFileInfo 更新文件信息
-func (f *FileInfoDaoImpl) UpdateFileInfo(ctx context.Context, tx *gorm.DB, infoID string, delta int64) error {
+func (f *FileInfoDaoImpl) UpdateFileInfo(ctx context.Context, tx *gorm.DB, infoID, delta int64) error {
 	if tx == nil {
 		tx = f.db.WithContext(ctx)
 	}
@@ -37,7 +40,7 @@ func (f *FileInfoDaoImpl) UpdateFileInfo(ctx context.Context, tx *gorm.DB, infoI
 }
 
 // SelectFileInfoByID 根据文件ID获得文件信息
-func (f *FileInfoDaoImpl) SelectFileInfoByID(ctx context.Context, infoID string) (*do.FileInfo, error) {
+func (f *FileInfoDaoImpl) SelectFileInfoByID(ctx context.Context, infoID int64) (*do.FileInfo, error) {
 	info := &do.FileInfo{}
 	err := f.db.WithContext(ctx).Find(info, "id = ?", infoID).Error
 	return info, err

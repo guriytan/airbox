@@ -51,7 +51,7 @@ func (u *UserService) Login(ctx context.Context, user, password string) (*do.Use
 }
 
 // GetUserByID 由于从token解析得到的user信息并不是实时的，因此这里提供实时的获取用户信息供显示容量
-func (u *UserService) GetUserByID(ctx context.Context, userID string) (*do.User, error) {
+func (u *UserService) GetUserByID(ctx context.Context, userID int64) (*do.User, error) {
 	log := logger.GetLogger(ctx, "GetUserByID")
 	byID, err := u.user.SelectUserByID(ctx, userID)
 	if err != nil {
@@ -121,7 +121,7 @@ func (u *UserService) Registry(ctx context.Context, username string, password st
 }
 
 // 修改Pwd 重置密码
-func (u *UserService) ResetPwd(ctx context.Context, userID, password string) error {
+func (u *UserService) ResetPwd(ctx context.Context, userID int64, password string) error {
 	log := logger.GetLogger(ctx, "ResetPwd")
 	if err := u.user.UpdateUser(ctx, &do.User{
 		Model:    do.Model{ID: userID},
@@ -134,7 +134,7 @@ func (u *UserService) ResetPwd(ctx context.Context, userID, password string) err
 }
 
 // ResetEmail 修改邮箱
-func (u *UserService) ResetEmail(ctx context.Context, userID, email string) error {
+func (u *UserService) ResetEmail(ctx context.Context, userID int64, email string) error {
 	log := logger.GetLogger(ctx, "ResetEmail")
 	if err := u.user.UpdateUser(ctx, &do.User{
 		Model: do.Model{ID: userID},
@@ -147,7 +147,7 @@ func (u *UserService) ResetEmail(ctx context.Context, userID, email string) erro
 }
 
 // UnsubscribeUser 注销用户，删除数据仓库内所有文件以及文件夹
-func (u *UserService) UnsubscribeUser(ctx context.Context, userID, storageID string) error {
+func (u *UserService) UnsubscribeUser(ctx context.Context, userID, storageID int64) error {
 	log := logger.GetLogger(ctx, "UnsubscribeUser")
 	err := pkg.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := u.user.DeleteUserByID(ctx, tx, userID); err != nil {
