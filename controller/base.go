@@ -25,7 +25,7 @@ func getBaseController() BaseController {
 
 // GetAuth verify return the authority of request
 func (*BaseController) GetAuth(c *gin.Context) *do.User {
-	userInfo, ok := c.Get("Authorization")
+	userInfo, ok := c.Get(global.KeyAuthorization)
 	if ok {
 		return userInfo.(*do.User)
 	}

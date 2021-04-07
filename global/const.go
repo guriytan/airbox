@@ -9,10 +9,11 @@ const (
 )
 
 const (
-	KeyRequestID = "request_id"
-	KeyFunction  = "function"
-	KeyUserID    = "user_id"
-	KeyIP        = "ip"
+	KeyAuthorization = "authorization"
+	KeyRequestID     = "request_id"
+	KeyFunction      = "function"
+	KeyUserID        = "user_id"
+	KeyIP            = "ip"
 )
 
 // 文件类型

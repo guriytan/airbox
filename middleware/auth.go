@@ -43,7 +43,8 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, global.ErrorOutOfDated)
 		return
 	}
-	c.Set("Authorization", &claims)
+	c.Set(global.KeyAuthorization, &claims)
+	c.Set(global.KeyUserID, claims.ID)
 
 	c.Next()
 }

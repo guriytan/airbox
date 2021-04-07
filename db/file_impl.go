@@ -85,7 +85,7 @@ func (f *FileDaoImpl) SelectFileByName(ctx context.Context, name string, storage
 
 // SelectFileTypeCount 获取文件类型的统计数据
 func (f *FileDaoImpl) SelectFileTypeCount(ctx context.Context, storageID int64) (types []*do.Statistics, err error) {
-	err = f.db.WithContext(ctx).Debug().Model(&do.File{}).
+	err = f.db.WithContext(ctx).Model(&do.File{}).
 		Select("type, count(*) as count").
 		Where("storage_id = ? and deleted_at is null", storageID).
 		Group("type").

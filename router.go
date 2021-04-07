@@ -15,6 +15,7 @@ func (router *Router) PathMapping() *Router {
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS())
 	router.Use(middleware.InjectContext)
+	router.Use(middleware.Latency)
 
 	// info组，负责一些显示的数据以及文件分享api
 	info := router.Group("/info", middleware.Login)

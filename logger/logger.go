@@ -62,7 +62,7 @@ func withField(ctx context.Context, log *zap.SugaredLogger) *zap.SugaredLogger {
 	if requestID, ok := ctx.Value(global.KeyRequestID).(string); ok {
 		log = log.With(global.KeyRequestID, requestID)
 	}
-	if userID, ok := ctx.Value(global.KeyUserID).(string); ok {
+	if userID, ok := ctx.Value(global.KeyUserID).(int64); ok {
 		log = log.With(global.KeyUserID, userID)
 	}
 	if ip, ok := ctx.Value(global.KeyIP).(string); ok {

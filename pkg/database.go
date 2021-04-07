@@ -26,13 +26,14 @@ func InitializeDB() error {
 		config.GetConfig().MySQL.Username,
 		config.GetConfig().MySQL.Password,
 		config.GetConfig().MySQL.Host,
-		config.GetConfig().MySQL.Database)), &gorm.Config{
-		SkipDefaultTransaction: true,
-		NamingStrategy:         schema.NamingStrategy{SingularTable: true},
-		Logger:                 log.Default,
-		PrepareStmt:            true,
-		CreateBatchSize:        100,
-	})
+		config.GetConfig().MySQL.Database)),
+		&gorm.Config{
+			SkipDefaultTransaction: true,
+			NamingStrategy:         schema.NamingStrategy{SingularTable: true},
+			Logger:                 log.Default,
+			PrepareStmt:            true,
+			CreateBatchSize:        100,
+		})
 	if err != nil {
 		return fmt.Errorf("DB 初始化失败: %v", err)
 	}
