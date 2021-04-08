@@ -47,18 +47,19 @@ func InitializeLogger() {
 
 func GetLogger(ctx context.Context, funcName string) *customLogger {
 	sugaredLogger := logger.Sugar().With(global.KeyFunction, funcName)
-	return &customLogger{SugaredLogger: withField(ctx, sugaredLogger)}
+	return &customLogger{SugaredLogger: withContext(ctx, sugaredLogger)}
 }
 
 type customLogger struct {
 	*zap.SugaredLogger
 }
 
-func (log *customLogger) WithError(err error) *zap.SugaredLogger {
-	return log.With("err", err)
+func (log *customLogger) WithError(err error) *customLogger {
+	log.SugaredLogger = log.With("err", err)
+	return log
 }
 
-func withField(ctx context.Context, log *zap.SugaredLogger) *zap.SugaredLogger {
+func withContext(ctx context.Context, log *zap.SugaredLogger) *zap.SugaredLogger {
 	if requestID, ok := ctx.Value(global.KeyRequestID).(string); ok {
 		log = log.With(global.KeyRequestID, requestID)
 	}
