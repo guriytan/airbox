@@ -52,8 +52,11 @@ func (s *StorageDaoImpl) UpdateMaxSize(ctx context.Context, storageID, size int6
 // SelectStorageByUserID 根据用户ID获得数据仓库
 func (s *StorageDaoImpl) SelectStorageByUserID(ctx context.Context, storageID int64) (*do.Storage, error) {
 	storage := &do.Storage{}
-	err := s.db.WithContext(ctx).Find(storage, "id = ?", storageID).Error
-	return storage, err
+	result := s.db.WithContext(ctx).Find(storage, "id = ?", storageID)
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return storage, result.Error
 }
 
 var (

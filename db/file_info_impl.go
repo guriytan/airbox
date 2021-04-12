@@ -42,15 +42,21 @@ func (f *FileInfoDaoImpl) UpdateFileInfo(ctx context.Context, tx *gorm.DB, infoI
 // SelectFileInfoByID 根据文件ID获得文件信息
 func (f *FileInfoDaoImpl) SelectFileInfoByID(ctx context.Context, infoID int64) (*do.FileInfo, error) {
 	info := &do.FileInfo{}
-	err := f.db.WithContext(ctx).Find(info, "id = ?", infoID).Error
-	return info, err
+	result := f.db.WithContext(ctx).Find(info, "id = ?", infoID)
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return info, result.Error
 }
 
 // SelectFileInfoByHash 根据Hash获得文件信息
 func (f *FileInfoDaoImpl) SelectFileInfoByHash(ctx context.Context, hash string) (*do.FileInfo, error) {
 	info := &do.FileInfo{}
-	err := f.db.WithContext(ctx).Find(info, "hash = ?", hash).Error
-	return info, err
+	result := f.db.WithContext(ctx).Find(info, "hash = ?", hash)
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return info, result.Error
 }
 
 var (

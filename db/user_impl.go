@@ -40,8 +40,11 @@ func (u *UserDaoImpl) UpdateUser(ctx context.Context, user *do.User) error {
 // SelectUserByID 根据用户ID获得用户
 func (u *UserDaoImpl) SelectUserByID(ctx context.Context, userID int64) (*do.User, error) {
 	user := &do.User{}
-	err := u.db.WithContext(ctx).Preload("Storage").Where("id = ?", userID).Find(user).Error
-	return user, err
+	result := u.db.WithContext(ctx).Preload("Storage").Find(user, "id = ?", userID)
+	if result.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return user, result.Error
 }
 
 // SelectUserByPwdAndNameOrEmail 根据用户名或邮箱以及密码获得用户
