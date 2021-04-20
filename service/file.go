@@ -218,7 +218,7 @@ func (f *FileService) deleteFile(ctx context.Context, tx *gorm.DB, file *do.File
 	}
 
 	if file.Type == int(global.FileFolderType) {
-		files, err := f.file.SelectFileByFatherID(ctx, file.StorageID, file.ID, 0, 0)
+		files, err := f.ScanFileByFatherID(ctx, file.StorageID, file.ID)
 		if err != nil {
 			log.WithError(err).Infof("get file by father id: %d failed", file.ID)
 			return err
@@ -314,7 +314,7 @@ func (f *FileService) copyFile(ctx context.Context, tx *gorm.DB, storageID, fath
 
 	var files []*do.File
 	if file.Type == int(global.FileFolderType) {
-		files, err = f.file.SelectFileByFatherID(ctx, file.StorageID, file.ID, 0, 0)
+		files, err = f.ScanFileByFatherID(ctx, file.StorageID, file.ID)
 		if err != nil {
 			log.WithError(err).Infof("get file by father id: %d failed", file.ID)
 			return err
@@ -370,4 +370,23 @@ func (f *FileService) FixFilename(ctx context.Context, name string, storageID, f
 		name = utils.AddSuffixToFilename(name)
 	}
 	return name, nil
+}
+
+// ScanFileByFatherID 获取所有FatherID下的文件
+func (f *FileService) ScanFileByFatherID(ctx context.Context, storageID, fatherID int64) ([]*do.File, error) {
+	var cursor, limit = int64(0), 500
+	var files = make([]*do.File, 0)
+	for {
+		fileByFatherID, err := f.file.SelectFileByFatherID(ctx, storageID, fatherID, cursor, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, file := range fileByFatherID {
+			cursor = file.ID
+			files = append(files, file)
+		}
+		if len(fileByFatherID) < limit {
+			return files, nil
+		}
+	}
 }
