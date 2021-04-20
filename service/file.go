@@ -74,9 +74,9 @@ func (f *FileService) SelectFileByFatherID(ctx context.Context, storageID, fathe
 }
 
 // GetFileByType 获取类型为fileType的文件
-func (f *FileService) GetFileByType(ctx context.Context, storageID int64, fileType global.FileType, cursor int64, limit int) ([]*do.File, int64, error) {
+func (f *FileService) GetFileByType(ctx context.Context, storageID int64, fatherID *int64, fileType global.FileType, cursor int64, limit int) ([]*do.File, int64, error) {
 	log := logger.GetLogger(ctx, "GetFileByType")
-	cond := &dto.QueryCondition{StorageID: storageID, Type: &fileType, Cursor: cursor, Limit: limit}
+	cond := &dto.QueryCondition{StorageID: storageID, FatherID: fatherID, Type: &fileType, Cursor: cursor, Limit: limit}
 	byType, err := f.file.SelectFileByCondition(ctx, cond)
 	if err != nil {
 		log.WithError(err).Infof("get file by type: %v failed", fileType)

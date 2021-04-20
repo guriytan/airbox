@@ -1,6 +1,10 @@
 package vo
 
-import "airbox/global"
+import (
+	"strconv"
+
+	"airbox/global"
+)
 
 type LoginModel struct {
 	UserKey  string `json:"user_key" form:"user_key"`
@@ -52,9 +56,18 @@ type UpdateFileModel struct {
 }
 
 type TypeModel struct {
-	Type global.FileType `json:"type" form:"type"`
+	FatherID string          `json:"father_id,omitempty" form:"father_id"`
+	Type     global.FileType `json:"type" form:"type"`
 
 	PageParam
+}
+
+func (t *TypeModel) GetFatherID() *int64 {
+	fatherID, err := strconv.ParseInt(t.FatherID, 10, 64)
+	if err != nil {
+		return nil
+	}
+	return &fatherID
 }
 
 type PageParam struct {

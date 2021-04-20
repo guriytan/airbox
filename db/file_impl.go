@@ -105,7 +105,10 @@ func (f *FileDaoImpl) SelectFileByCondition(ctx context.Context, cond *dto.Query
 	if cond.Cursor > 0 {
 		query = query.Where("id < ?", cond.Cursor)
 	}
-	err = query.Order("id desc").Limit(cond.Limit).Find(&files).Error
+	if cond.Limit > 0 {
+		query = query.Limit(cond.Limit)
+	}
+	err = query.Order("id desc").Find(&files).Error
 	return
 }
 

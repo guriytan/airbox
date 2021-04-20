@@ -90,7 +90,7 @@ func (i *InfoController) ListType(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	files, count, err := i.file.GetFileByType(ctx, i.GetAuth(c).Storage.ID, req.Type, req.Cursor, req.Limit)
+	files, count, err := i.file.GetFileByType(ctx, i.GetAuth(c).Storage.ID, req.GetFatherID(), req.Type, req.Cursor, req.Limit)
 	if err != nil {
 		log.WithError(err).Warnf("get file by type failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
