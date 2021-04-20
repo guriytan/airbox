@@ -20,12 +20,13 @@ const (
 type FileType int
 
 const (
-	FileOtherType    FileType = 0
-	FileMusicType    FileType = 1
-	FileVideoType    FileType = 2
-	FileDocumentType FileType = 3
-	FilePictureType  FileType = 4
-	FileFolderType   FileType = 5
+	FileUnknownType  FileType = 0
+	FileOtherType    FileType = 1
+	FileMusicType    FileType = 2
+	FileVideoType    FileType = 3
+	FileDocumentType FileType = 4
+	FilePictureType  FileType = 5
+	FileFolderType   FileType = 6
 )
 
 const (

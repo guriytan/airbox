@@ -13,6 +13,7 @@ import (
 	"airbox/global"
 	"airbox/logger"
 	"airbox/model/do"
+	"airbox/model/dto"
 	"airbox/pkg"
 	"airbox/utils"
 	"airbox/utils/hasher"
@@ -56,25 +57,37 @@ func (f *FileService) GetFileByID(ctx context.Context, fileID int64) (*do.File, 
 }
 
 // SelectFileByFatherID 获取在父节点fid下的文件
-func (f *FileService) SelectFileByFatherID(ctx context.Context, storageID, fatherID, cursor int64, limit int) (files []*do.File, err error) {
+func (f *FileService) SelectFileByFatherID(ctx context.Context, storageID, fatherID, cursor int64, limit int) (files []*do.File, count int64, err error) {
 	log := logger.GetLogger(ctx, "SelectFileByFatherID")
-	byFolderID, err := f.file.SelectFileByFatherID(ctx, storageID, fatherID, cursor, limit)
+	cond := &dto.QueryCondition{StorageID: storageID, FatherID: &fatherID, Cursor: cursor, Limit: limit}
+	byFolderID, err := f.file.SelectFileByCondition(ctx, cond)
 	if err != nil {
 		log.WithError(err).Infof("get file by storage id: %v failed", fatherID)
-		return nil, err
+		return nil, 0, err
 	}
-	return byFolderID, nil
+	count, err = f.file.CountByCondition(ctx, cond)
+	if err != nil {
+		log.WithError(err).Infof("get count by storage id: %v failed", fatherID)
+		return nil, 0, err
+	}
+	return byFolderID, count, nil
 }
 
 // GetFileByType 获取类型为fileType的文件
-func (f *FileService) GetFileByType(ctx context.Context, storageID int64, fileType global.FileType, cursor int64, limit int) ([]*do.File, error) {
+func (f *FileService) GetFileByType(ctx context.Context, storageID int64, fileType global.FileType, cursor int64, limit int) ([]*do.File, int64, error) {
 	log := logger.GetLogger(ctx, "GetFileByType")
-	byType, err := f.file.SelectFileByType(ctx, storageID, int(fileType), cursor, limit)
+	cond := &dto.QueryCondition{StorageID: storageID, Type: &fileType, Cursor: cursor, Limit: limit}
+	byType, err := f.file.SelectFileByCondition(ctx, cond)
 	if err != nil {
 		log.WithError(err).Infof("get file by type: %v failed", fileType)
-		return nil, err
+		return nil, 0, err
 	}
-	return byType, nil
+	count, err := f.file.CountByCondition(ctx, cond)
+	if err != nil {
+		log.WithError(err).Infof("get count by type: %v failed", fileType)
+		return nil, 0, err
+	}
+	return byType, count, nil
 }
 
 // SelectFileTypeCount 获取不同类型文件的统计数量
@@ -376,8 +389,10 @@ func (f *FileService) FixFilename(ctx context.Context, name string, storageID, f
 func (f *FileService) ScanFileByFatherID(ctx context.Context, storageID, fatherID int64) ([]*do.File, error) {
 	var cursor, limit = int64(0), 500
 	var files = make([]*do.File, 0)
+	cond := &dto.QueryCondition{StorageID: storageID, FatherID: &fatherID, Limit: limit}
 	for {
-		fileByFatherID, err := f.file.SelectFileByFatherID(ctx, storageID, fatherID, cursor, limit)
+		cond.Cursor = cursor
+		fileByFatherID, err := f.file.SelectFileByCondition(ctx, cond)
 		if err != nil {
 			return nil, err
 		}

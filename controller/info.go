@@ -50,13 +50,13 @@ func (i *InfoController) ListFile(c *gin.Context) {
 	if req.FatherID != 0 {
 		fatherID = req.FatherID
 	}
-	files, err := i.file.SelectFileByFatherID(ctx, i.GetAuth(c).Storage.ID, fatherID, req.Cursor, req.Limit)
+	files, count, err := i.file.SelectFileByFatherID(ctx, i.GetAuth(c).Storage.ID, fatherID, req.Cursor, req.Limit)
 	if err != nil {
 		log.WithError(err).Warnf("get file by father_id failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	c.JSON(http.StatusOK, map[string]interface{}{"files": files})
+	c.JSON(http.StatusOK, map[string]interface{}{"files": files, "total": count})
 }
 
 // UserInfo 显示用户及相关信息
@@ -90,13 +90,13 @@ func (i *InfoController) ListType(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	files, err := i.file.GetFileByType(ctx, i.GetAuth(c).Storage.ID, req.Type, req.Cursor, req.Limit)
+	files, count, err := i.file.GetFileByType(ctx, i.GetAuth(c).Storage.ID, req.Type, req.Cursor, req.Limit)
 	if err != nil {
 		log.WithError(err).Warnf("get file by type failed")
 		c.JSON(http.StatusInternalServerError, global.ErrorOfSystem)
 		return
 	}
-	c.JSON(http.StatusOK, map[string]interface{}{"files": files})
+	c.JSON(http.StatusOK, map[string]interface{}{"files": files, "total": count})
 }
 
 // ShareFile 分享文件

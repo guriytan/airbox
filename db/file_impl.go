@@ -7,6 +7,7 @@ import (
 	"airbox/db/base"
 	"airbox/global"
 	"airbox/model/do"
+	"airbox/model/dto"
 
 	"gorm.io/gorm"
 )
@@ -55,41 +56,15 @@ func (f *FileDaoImpl) SelectFileByID(ctx context.Context, fileID int64) (*do.Fil
 	return file, res.Error
 }
 
-// SelectFileByFatherID 根据文件夹ID获得文件
-func (f *FileDaoImpl) SelectFileByFatherID(ctx context.Context, storageID, fatherID int64, cursor int64, limit int) (files []*do.File, err error) {
-	query := f.db.WithContext(ctx).Preload("FileInfo").Where("storage_id = ?", storageID)
+// SelectFileByName 在数据仓库下查看文件夹下是否有文件名为name的文件
+func (f *FileDaoImpl) SelectFileByName(ctx context.Context, name string, storageID, fatherID int64) (files []*do.File, err error) {
+	query := f.db.WithContext(ctx).Where("storage_id = ?", storageID)
 	if fatherID != 0 {
 		query = query.Where("father_id = ?", fatherID)
 	} else {
-		query = query.Where("father_id = ?", global.DefaultFatherID)
+		query = query.Where("father_id = ? ", global.DefaultFatherID)
 	}
-	if cursor > 0 {
-		query = query.Where("id < ?", cursor)
-	}
-	err = query.Order("id desc").Limit(limit).Find(&files).Error
-	return
-}
-
-// SelectFileByType 根据文件类型获得文件
-func (f *FileDaoImpl) SelectFileByType(ctx context.Context, storageID int64, fileType int, cursor int64, limit int) (files []*do.File, err error) {
-	query := f.db.WithContext(ctx).Preload("FileInfo").
-		Where("storage_id = ? and type = ?", storageID, fileType)
-	if cursor > 0 {
-		query = query.Where("id < ?", cursor)
-	}
-	err = query.Order("id desc").Limit(limit).Find(&files).Error
-	return
-}
-
-// SelectFileByName 在数据仓库下查看文件夹下是否有文件名为name的文件
-func (f *FileDaoImpl) SelectFileByName(ctx context.Context, name string, storageID, fatherID int64) (files []*do.File, err error) {
-	tx := f.db.WithContext(ctx).Where("storage_id = ?", storageID)
-	if fatherID != 0 {
-		tx = tx.Where("father_id = ?", fatherID)
-	} else {
-		tx = tx.Where("father_id = ? ", global.DefaultFatherID)
-	}
-	res := tx.Where("name = ?", name).Order("id").Limit(1).Find(&files)
+	res := query.Where("name = ?", name).Order("id").Limit(1).Find(&files)
 	if res.RowsAffected == 0 {
 		return nil, gorm.ErrRecordNotFound
 	}
@@ -103,6 +78,34 @@ func (f *FileDaoImpl) SelectFileTypeCount(ctx context.Context, storageID int64) 
 		Where("storage_id = ? and type != ? and deleted_at is null", storageID, global.FileFolderType).
 		Group("type").
 		Scan(&types).Error
+	return
+}
+
+// CountByCondition 根据查询条件获取总数
+func (f *FileDaoImpl) CountByCondition(ctx context.Context, cond *dto.QueryCondition) (count int64, err error) {
+	query := f.db.WithContext(ctx).Model(&do.File{}).Where("storage_id = ?", cond.StorageID)
+	if cond.IsSetFatherID() {
+		query = query.Where("father_id = ? ", cond.GetFatherID())
+	}
+	if cond.IsSetType() {
+		query = query.Where("type = ? ", cond.GetType())
+	}
+	err = query.Count(&count).Error
+	return
+}
+
+func (f *FileDaoImpl) SelectFileByCondition(ctx context.Context, cond *dto.QueryCondition) (files []*do.File, err error) {
+	query := f.db.WithContext(ctx).Preload("FileInfo").Where("storage_id = ?", cond.StorageID)
+	if cond.IsSetFatherID() {
+		query = query.Where("father_id = ? ", cond.GetFatherID())
+	}
+	if cond.IsSetType() {
+		query = query.Where("type = ? ", cond.GetType())
+	}
+	if cond.Cursor > 0 {
+		query = query.Where("id < ?", cond.Cursor)
+	}
+	err = query.Order("id desc").Limit(cond.Limit).Find(&files).Error
 	return
 }
 
