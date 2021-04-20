@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 用户数据库操作实体
+// UserDaoImpl 用户数据库操作实体
 type UserDaoImpl struct {
 	db *gorm.DB
 }

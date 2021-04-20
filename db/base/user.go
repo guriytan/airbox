@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 用户数据库操作接口
+// UserDao 用户数据库操作接口
 type UserDao interface {
 	InsertUser(ctx context.Context, tx *gorm.DB, user *do.User) error
 

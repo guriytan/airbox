@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 文件数据库操作接口
+// FileDao 文件数据库操作接口
 type FileDao interface {
 	InsertFile(ctx context.Context, tx *gorm.DB, file *do.File) error
 

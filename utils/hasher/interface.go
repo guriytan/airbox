@@ -1,5 +1,5 @@
 package hasher
 
-type Hasher interface {
+type Hash interface {
 	Hash(values ...interface{}) string
 }

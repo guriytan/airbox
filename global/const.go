@@ -16,7 +16,7 @@ const (
 	KeyIP            = "ip"
 )
 
-// 文件类型
+// FileType 文件类型
 type FileType int
 
 const (

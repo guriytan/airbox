@@ -6,7 +6,7 @@ import (
 	"airbox/utils"
 )
 
-// 每个用户仅拥有一个数据仓库
+// Storage 每个用户仅拥有一个数据仓库
 type Storage struct {
 	Model
 	UserID      int64  `gorm:"type:bigint(20);index" json:"user_id,string"`         // 所属用户ID

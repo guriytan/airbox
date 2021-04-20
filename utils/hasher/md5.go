@@ -9,7 +9,7 @@ import (
 
 type md5Hash struct{}
 
-func GetMD5() Hasher {
+func GetMD5() Hash {
 	return &md5Hash{}
 }
 

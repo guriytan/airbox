@@ -15,7 +15,7 @@ type Model struct {
 	DeletedAt *time.Time `gorm:"index" json:"deleted_at"`
 }
 
-// 统计文件类型数量
+// Statistics 统计文件类型数量
 type Statistics struct {
 	Type  int `json:"type"`
 	Count int `json:"count"`

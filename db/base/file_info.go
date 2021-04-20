@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// FileInfoDao 文件数据库操作接口
 type FileInfoDao interface {
 	InsertFileInfo(ctx context.Context, tx *gorm.DB, info *do.FileInfo) error
 	DeleteFileInfo(ctx context.Context, tx *gorm.DB, infoID int64) error

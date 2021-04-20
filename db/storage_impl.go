@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 数据仓库数据库操作实体
+// StorageDaoImpl 数据仓库数据库操作实体
 type StorageDaoImpl struct {
 	db *gorm.DB
 }

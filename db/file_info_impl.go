@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 文件数据库操作实体
+// FileInfoDaoImpl 文件数据库操作实体
 type FileInfoDaoImpl struct {
 	db *gorm.DB
 }

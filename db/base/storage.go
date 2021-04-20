@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 数据仓库数据库操作接口
+// StorageDao 数据仓库数据库操作接口
 type StorageDao interface {
 	InsertStorage(ctx context.Context, tx *gorm.DB, storage *do.Storage) error
 

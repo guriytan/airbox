@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// 文件数据库操作实体
+// FileDaoImpl 文件数据库操作实体
 type FileDaoImpl struct {
 	db *gorm.DB
 }
@@ -55,23 +55,29 @@ func (f *FileDaoImpl) SelectFileByID(ctx context.Context, fileID int64) (*do.Fil
 	return file, res.Error
 }
 
-// SelectFileByType 根据文件夹ID获得文件
+// SelectFileByFatherID 根据文件夹ID获得文件
 func (f *FileDaoImpl) SelectFileByFatherID(ctx context.Context, storageID, fatherID int64, cursor int64, limit int) (files []*do.File, err error) {
-	tx := f.db.WithContext(ctx).Preload("FileInfo").Where("storage_id = ?", storageID)
+	query := f.db.WithContext(ctx).Preload("FileInfo").Where("storage_id = ?", storageID)
 	if fatherID != 0 {
-		tx = tx.Where("father_id = ?", fatherID)
+		query = query.Where("father_id = ?", fatherID)
 	} else {
-		tx = tx.Where("father_id = ?", global.DefaultFatherID)
+		query = query.Where("father_id = ?", global.DefaultFatherID)
 	}
-	err = tx.Order("updated_at desc").Find(&files).Error
+	if cursor > 0 {
+		query = query.Where("id < ?", cursor)
+	}
+	err = query.Order("id desc").Limit(limit).Find(&files).Error
 	return
 }
 
 // SelectFileByType 根据文件类型获得文件
 func (f *FileDaoImpl) SelectFileByType(ctx context.Context, storageID int64, fileType int, cursor int64, limit int) (files []*do.File, err error) {
-	err = f.db.WithContext(ctx).Preload("FileInfo").
-		Where("storage_id = ? and type = ?", storageID, fileType).
-		Order("updated_at desc").Find(&files).Error
+	query := f.db.WithContext(ctx).Preload("FileInfo").
+		Where("storage_id = ? and type = ?", storageID, fileType)
+	if cursor > 0 {
+		query = query.Where("id < ?", cursor)
+	}
+	err = query.Order("id desc").Limit(limit).Find(&files).Error
 	return
 }
 

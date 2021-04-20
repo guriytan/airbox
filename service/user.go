@@ -123,7 +123,7 @@ func (u *UserService) Registry(ctx context.Context, username string, password st
 	return nil
 }
 
-// 修改Pwd 重置密码
+// ResetPwd 重置密码
 func (u *UserService) ResetPwd(ctx context.Context, userID int64, password string) error {
 	log := logger.GetLogger(ctx, "ResetPwd")
 	if err := u.user.UpdateUser(ctx, &do.User{
